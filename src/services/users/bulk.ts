@@ -5,6 +5,7 @@ import type { FaithBusinessTransactionService } from "../transaction";
 import type { FaithUsersService } from "./service";
 import type { Context } from "koishi";
 import { createHash } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 
 export interface FaithBulkOptions {
   /** 调用方生成的稳定操作号；同一操作号重试不会重复发放。 */
@@ -72,47 +73,46 @@ export class FaithBulkOperationsService {
     const status = options.status ?? "active";
     if (status !== "all" && !["active", "disabled", "closed"].includes(status)) throw new FaithCoreError("VALIDATION_FAILED", "全体操作用户状态无效");
     await this.ensureOperation(operationId, kind, { ...payload, status });
-    let offset = 0, total = 0, succeeded = 0, skipped = 0;
+    let cursorUid = 0, total = 0, succeeded = 0, skipped = 0;
     const failed: FaithBulkFailure[] = [];
     while (true) {
-      const page = await this.users.list({ status: status === "all" ? undefined : status, offset, limit: pageSize });
+      const page = await this.users.listUids(cursorUid, pageSize, status);
       if (!page.length) break;
       total += page.length;
       let cursor = 0, stop = false;
       const worker = async () => {
         while (!stop) {
-          const user = page[cursor++];
-          if (!user) return;
+          const uid = page[cursor++];
+          if (uid === undefined) return;
           try {
-            await execute(user.uid, createIdempotencyKey(operationId, kind, user.uid));
+            await execute(uid, createIdempotencyKey(operationId, kind, uid));
             succeeded++;
           } catch (error) {
             if (error instanceof FaithCoreError && error.code === "IDEMPOTENCY_CONFLICT") { skipped++; continue; }
-            failed.push(toFailure(user.uid, error));
+            failed.push(toFailure(uid, error));
             if (!continueOnError) stop = true;
           }
         }
       };
       await Promise.all(Array.from({ length: Math.min(concurrency, page.length) }, worker));
       if (stop) break;
-      offset += page.length;
+      cursorUid = page[page.length - 1];
       if (page.length < pageSize) break;
     }
     return Object.freeze({ operationId, total, succeeded, skipped, failed: Object.freeze(failed) });
   }
 
   private async ensureOperation(operationId: string, kind: string, payload: Record<string, unknown>) {
-    const expected = JSON.stringify(payload);
     const [existing] = await this.ctx.database.get("faith_core_bulk_operations", { operation_id: operationId });
     if (existing) {
-      if (existing.kind !== kind || JSON.stringify(existing.payload) !== expected) throw new FaithCoreError("CONFLICT", "operationId 已用于其他全体操作或参数不同", { operationId });
+      if (existing.kind !== kind || !isDeepStrictEqual(existing.payload, payload)) throw new FaithCoreError("CONFLICT", "operationId 已用于其他全体操作或参数不同", { operationId });
       return;
     }
     try { await this.ctx.database.create("faith_core_bulk_operations", { operation_id: operationId, kind, payload, created_at: new Date() }); }
     catch (error) {
       const [created] = await this.ctx.database.get("faith_core_bulk_operations", { operation_id: operationId });
       if (!created) throw error;
-      if (created.kind !== kind || JSON.stringify(created.payload) !== expected) throw new FaithCoreError("CONFLICT", "operationId 已用于其他全体操作或参数不同", { operationId }, { cause: error });
+      if (created.kind !== kind || !isDeepStrictEqual(created.payload, payload)) throw new FaithCoreError("CONFLICT", "operationId 已用于其他全体操作或参数不同", { operationId }, { cause: error });
     }
   }
 }

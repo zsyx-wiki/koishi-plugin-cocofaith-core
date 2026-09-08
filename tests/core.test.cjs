@@ -186,6 +186,17 @@ test('persistent registries allow an identical same-owner reload', () => {
   assert.equal(professions.register(profession, { owner: 'business:test' }), professions.register(profession, { owner: 'business:test' }))
 })
 
+test('batch registry failures restore definitions replaced earlier in the same batch', () => {
+  const levels = new core.FaithItemLevelRegistry()
+  levels.register({ id: 'X', name: 'original', rank: 1 }, { owner: 'test' })
+  assert.throws(() => levels.registerMany([
+    { id: 'X', name: 'replacement', rank: 2 },
+    { id: '', name: 'invalid', rank: 3 },
+  ], { owner: 'test', replace: true }))
+  assert.equal(levels.require('X').name, 'original')
+  assert.equal(levels.all().length, 1)
+})
+
 test('inventory mutation rejects shortage and item cap with stable codes', () => {
   const item = { item_id: 'test', name: 'Test', type: 'item', level: 'D', description: '', max_quantity: 2, marketable: false, price: 0, obtainable: true }
   assert.equal(assertCode(() => core.createInventoryMutation(10000000, item, 0, -1)), 'ITEM_INSUFFICIENT')
@@ -193,7 +204,7 @@ test('inventory mutation rejects shortage and item cap with stable codes', () =>
 })
 
 test('bulk operations require an idempotent operation id and report skips', async () => {
-  const users = { list: async ({ offset }) => offset ? [] : [{ uid: 10000000 }, { uid: 10000001 }] }
+  const users = { listUids: async (after) => after ? [] : [10000000, 10000001] }
   const items = { require: () => ({ item_id: 'gift' }) }
   const transactions = {
     run: async (_business, uid, task) => {

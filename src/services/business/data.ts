@@ -16,12 +16,17 @@ export class FaithBusinessDataService {
 
   async get(uid: number, business: string): Promise<FaithCoreBusinessData> {
     assertBusinessName(business);
+    const [, existing] = await Promise.all([
+      this.users.require(uid),
+      this.ctx.database.get("faith_core_business", { uid, business }, { limit: 1 }).then((rows) => rows[0]),
+    ]);
+    if (existing) return existing;
     return this.locks.run(`business-data:${business}:uid:${uid}`, () =>
       this.transactions.run(async (database) => {
         await this.users.require(uid, database);
         const [row] = await database.get("faith_core_business", { uid, business });
         if (row) return row;
-        try { return await database.create("faith_core_business", { uid, business, private: {}, public: {} }); }
+        try { return await database.create("faith_core_business", { uid, business, version: 0, private: {}, public: {} }); }
         catch (error) {
           const [created] = await database.get("faith_core_business", { uid, business });
           if (created) return created;
@@ -43,13 +48,15 @@ export class FaithBusinessDataService {
         await this.users.require(uid, database);
         let [row] = await database.get("faith_core_business", { uid, business });
         if (!row) {
-          try { row = await database.create("faith_core_business", { uid, business, private: {}, public: {} }); }
+          try { row = await database.create("faith_core_business", { uid, business, version: 0, private: {}, public: {} }); }
           catch (error) {
             [row] = await database.get("faith_core_business", { uid, business });
             if (!row) throw error;
           }
         }
-        const result = await database.set("faith_core_business", { id: row.id, private: row.private, public: row.public }, {
+        const version = Number.isSafeInteger(row.version) ? row.version : 0;
+        const result = await database.set("faith_core_business", { id: row.id, version }, {
+          version: version + 1,
           private: privateData ?? row.private,
           public: publicData ?? row.public,
         });

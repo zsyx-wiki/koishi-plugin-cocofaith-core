@@ -1,6 +1,7 @@
 import type { FaithItemDefinition, ItemQuery } from "../types";
 import { validateItemDefinition } from "./validation";
 import { FaithCoreError } from "../errors";
+import { isDeepStrictEqual } from "node:util";
 
 export class FaithItemRegistry {
   private registryRevision = 0;
@@ -16,7 +17,7 @@ export class FaithItemRegistry {
     if (current && current.name !== input.name) this.itemIdsByName.delete(current.name);
     const item = Object.freeze({
       ...input,
-      actions: input.actions ? Object.freeze([...input.actions]) as unknown as string[] : undefined,
+      actions: input.actions ? Object.freeze([...input.actions]) : undefined,
       openable: input.openable ? freezeOpenable(input.openable) : undefined,
     });
     this.definitions.set(item.item_id, item);
@@ -37,7 +38,15 @@ export class FaithItemRegistry {
       seenNames.add(item.name);
       this.assertCanRegister(item, options);
     }
-    return inputs.map((item) => this.register(item, options));
+    const definitions = new Map(this.definitions), names = new Map(this.itemIdsByName), owners = new Map(this.owners), revision = this.registryRevision;
+    try { return inputs.map((item) => this.register(item, options)); }
+    catch (error) {
+      this.definitions.clear(); for (const [key, value] of definitions) this.definitions.set(key, value);
+      this.itemIdsByName.clear(); for (const [key, value] of names) this.itemIdsByName.set(key, value);
+      this.owners.clear(); for (const [key, value] of owners) this.owners.set(key, value);
+      this.registryRevision = revision;
+      throw error;
+    }
   }
 
   get(itemId: string) { return this.definitions.get(itemId); }
@@ -113,5 +122,5 @@ function freezeOpenable(value: NonNullable<FaithItemDefinition["openable"]>) {
 }
 
 function sameDefinition(current: Readonly<FaithItemDefinition>, input: FaithItemDefinition) {
-  return JSON.stringify(current) === JSON.stringify(input);
+  return isDeepStrictEqual(current, input);
 }

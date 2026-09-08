@@ -54,6 +54,7 @@ export function registerCoreModels(ctx: Context) {
     id: "unsigned",
     uid: "unsigned",
     business: "string(64)",
+    version: { type: "unsigned", initial: 0 },
     private: "json",
     public: "json",
   }, {

@@ -152,7 +152,7 @@ export function createBusinessPermissionsApi(service: FaithPermissionsService, b
   return Object.freeze({
     register: (permission: string, policy: import("../../permissions").PermissionPolicy) =>
       service.register(permission, policy, { owner: `business:${business}` }),
-    check: (uid, permission, data, scope, scopeValue) => service.check(uid, permission, data, scope, scopeValue),
+    check: (uid: number, permission: string, data?: Record<string, unknown>, scope?: string, scopeValue?: string) => service.check(uid, permission, data, scope, scopeValue),
   });
 }
 
@@ -162,8 +162,8 @@ export function createBusinessProfessionsApi(service: FaithProfessionService, bu
     register: (definition: import("../../types").FaithProfessionDefinition, options: { override?: boolean } = {}) => service.register(definition, { ...options, owner }),
     registerMany: (definitions: readonly import("../../types").FaithProfessionDefinition[], options: { override?: boolean } = {}) => service.registerMany(definitions, { ...options, owner }),
     unregister: (id: string) => service.unregister(id, owner),
-    get: (id) => service.get(id), getByName: (name) => service.getByName(name), resolve: (key) => service.resolve(key), require: (key) => service.require(key),
-    all: () => service.all(), list: (query) => service.list(query), getUserProfession: (uid) => service.getUserProfession(uid),
+    get: (id: string) => service.get(id), getByName: (name: string) => service.getByName(name), resolve: (key: string) => service.resolve(key), require: (key: string) => service.require(key),
+    all: () => service.all(), list: (query?: { faith?: string; type?: string; source?: string }) => service.list(query), getUserProfession: (uid: number) => service.getUserProfession(uid),
   });
 }
 
@@ -173,9 +173,11 @@ export function createBusinessIdentitiesApi(service: FaithIdentityService): Read
 
 export function createBusinessFaithsApi(service: FaithRegistryService): Readonly<FaithBusinessFaithsApi> {
   return Object.freeze({
-    get: (name) => service.get(name), require: (name) => service.require(name), has: (name) => service.has(name), all: () => service.all(), byPath: (path) => service.byPath(path),
-    registerUser: (identity, faith, initialGold) => service.registerUser(identity, faith, initialGold), registerDynamic: (input) => service.registerDynamic(input), setPrayerWord: (name, word) => service.setPrayerWord(name, word),
-    setCustomProfession: (name, type, profession) => service.setCustomProfession(name, type, profession),
+    get: (name: string) => service.get(name), require: (name: string) => service.require(name), has: (name: string) => service.has(name), all: () => service.all(), byPath: (path: string) => service.byPath(path),
+    registerUser: (identity: IdentityInput, faith: string, initialGold?: number) => service.registerUser(identity, faith, initialGold),
+    registerDynamic: (input: { name: string; path: string; creatorUid: number; prayerWord?: string; metadata?: Record<string, unknown> }) => service.registerDynamic(input),
+    setPrayerWord: (name: string, word: string) => service.setPrayerWord(name, word),
+    setCustomProfession: (name: string, type: string, profession: string) => service.setCustomProfession(name, type, profession),
   });
 }
 
@@ -212,8 +214,8 @@ export function createBusinessBulkApi(service: FaithBulkOperationsService, busin
     return { ...value, operationId: `${business}:${value.operationId}` };
   };
   return Object.freeze({
-    changeValuesForAll: (delta, value) => service.changeValuesForAll(delta, options(value)),
-    giveItemToAll: (item, quantity, value) => service.giveItemToAll(item, quantity, options(value)),
+    changeValuesForAll: (delta: Readonly<UserValueDelta>, value: FaithBulkOptions) => service.changeValuesForAll(delta, options(value)),
+    giveItemToAll: (item: string, quantity: number, value: FaithBulkOptions) => service.giveItemToAll(item, quantity, options(value)),
   });
 }
 export function createBusinessEconomyApi(service: FaithEconomyService, business: string): Readonly<FaithBusinessEconomyApi> {
@@ -227,10 +229,12 @@ export function createBusinessEconomyApi(service: FaithEconomyService, business:
     return { ...rest, source: source(action) };
   };
   return Object.freeze({
-    getWallet: (uid) => service.getWallet(uid), canAfford: (uid, cost) => service.canAfford(uid, cost), requireFunds: (uid, cost) => service.requireFunds(uid, cost),
-    pay: (uid, cost, value) => service.pay(uid, cost, options(value)), reward: (uid, amount, value) => service.reward(uid, amount, options(value)),
-    refund: (uid, amount, value) => service.refund(uid, amount, options(value)), transfer: (from, to, amount, value) => service.transfer(from, to, amount, options(value)),
-    previewReward: (uid, amount, action, metadata) => service.previewReward(uid, amount, source(action), metadata),
+    getWallet: (uid: number) => service.getWallet(uid), canAfford: (uid: number, cost: Readonly<FaithMoney>) => service.canAfford(uid, cost), requireFunds: (uid: number, cost: Readonly<FaithMoney>) => service.requireFunds(uid, cost),
+    pay: (uid: number, cost: Readonly<FaithMoney>, value: FaithBusinessEconomyOptions) => service.pay(uid, cost, options(value)),
+    reward: (uid: number, amount: Readonly<FaithMoney>, value: FaithBusinessRewardOptions) => service.reward(uid, amount, options(value)),
+    refund: (uid: number, amount: Readonly<FaithMoney>, value: FaithBusinessEconomyOptions) => service.refund(uid, amount, options(value)),
+    transfer: (from: number, to: number, amount: Readonly<FaithMoney>, value: FaithBusinessEconomyOptions) => service.transfer(from, to, amount, options(value)),
+    previewReward: (uid: number, amount: Readonly<FaithMoney>, action: string, metadata?: Readonly<Record<string, unknown>>) => service.previewReward(uid, amount, source(action), metadata),
   });
 }
 

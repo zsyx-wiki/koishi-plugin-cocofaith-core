@@ -170,9 +170,9 @@ export class FaithCoreService extends Service {
 
   private registerBuiltInItems() {
     this.items.registerMany([
-      ...(CORE_ITEMS as unknown as FaithItemDefinition[]),
-      ...(CORE_EASTER_EGGS as unknown as FaithItemDefinition[]),
-      ...(CORE_OPENABLE_ITEMS as unknown as FaithItemDefinition[]),
+      ...CORE_ITEMS,
+      ...CORE_EASTER_EGGS,
+      ...CORE_OPENABLE_ITEMS,
     ], { owner: "core" });
   }
 

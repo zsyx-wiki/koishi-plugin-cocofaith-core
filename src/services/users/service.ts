@@ -39,9 +39,11 @@ export class FaithUsersService {
   }
 
   async exists(uid: number) { return !!await this.get(uid); }
-  async listUids(after = 0, limit = 100): Promise<number[]> {
+  async listUids(after = 0, limit = 100, status: FaithCoreUserData["status"] | "all" = "active"): Promise<number[]> {
     if (!Number.isSafeInteger(after) || after < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 500) throw new FaithCoreError("VALIDATION_FAILED", "UID 分页参数无效");
-    const rows = await this.ctx.database.get("faith_core_users_data", { uid: { $gt: after }, status: "active" }, { fields: ["uid"], limit, sort: { uid: "asc" } });
+    if (status !== "all" && !["active", "disabled", "closed"].includes(status)) throw new FaithCoreError("VALIDATION_FAILED", "用户状态无效");
+    const query = status === "all" ? { uid: { $gt: after } } : { uid: { $gt: after }, status };
+    const rows = await this.ctx.database.get("faith_core_users_data", query, { fields: ["uid"], limit, sort: { uid: "asc" } });
     return rows.map((row) => row.uid);
   }
   async count(status?: FaithCoreUserData["status"]) { return (await this.ctx.database.get("faith_core_users_data", status ? { status } : {}, { fields: ["uid"] })).length; }

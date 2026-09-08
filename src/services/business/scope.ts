@@ -1,5 +1,5 @@
 import { Model } from "koishi";
-import type { Database } from "koishi";
+import type { Context } from "koishi";
 import type { BusinessModelFields } from "../../database";
 import type { FaithLifecycleScope, FaithLifecycleService } from "../../lifecycle";
 import type { FaithBusinessDataService } from "./data";
@@ -37,11 +37,11 @@ export class FaithBusinessCoreScope {
     set(uid: number, value: { private?: Record<string, unknown>; public?: Record<string, unknown> }): ReturnType<FaithBusinessDataService["set"]>;
   }>;
   readonly table: Readonly<{
-    get(query?: Record<string, unknown>, cursor?: Record<string, unknown>): Promise<any[]>;
-    create(value: Record<string, unknown>): Promise<any>;
-    upsert(values: readonly Record<string, unknown>[], keys?: readonly string[]): Promise<any>;
-    set(query: Record<string, unknown>, patch: Record<string, unknown>): Promise<any>;
-    remove(query: Record<string, unknown>): Promise<any>;
+    get<T extends object = Record<string, unknown>>(query?: Record<string, unknown>, cursor?: Record<string, unknown>): Promise<T[]>;
+    create<T extends object>(value: T): Promise<T>;
+    upsert(values: readonly Record<string, unknown>[], keys?: readonly string[]): Promise<unknown>;
+    set(query: Record<string, unknown>, patch: Record<string, unknown>): Promise<{ matched?: number }>;
+    remove(query: Record<string, unknown>): Promise<unknown>;
   }>;
 
   constructor(
@@ -59,7 +59,7 @@ export class FaithBusinessCoreScope {
       fields: BusinessModelFields,
       config?: Partial<Model.Config>,
     ) => string,
-    database?: Database,
+    database?: Context["database"],
   ) {
     assertBusinessName(name);
     this.lifecycle = lifecycle.scope(`business:${name}`);
@@ -98,10 +98,10 @@ export class FaithBusinessCoreScope {
       return patch as never;
     };
     this.table = Object.freeze({
-      get: (query: Record<string, unknown> = {}, cursor?: Record<string, unknown>) => database!.get(requireTable(), query as never, cursor as never) as Promise<any[]>,
-      create: (value: Record<string, unknown>) => database!.create(requireTable(), value as never),
+      get: <T extends object = Record<string, unknown>>(query: Record<string, unknown> = {}, cursor?: Record<string, unknown>) => database!.get(requireTable(), query as never, cursor as never) as unknown as Promise<T[]>,
+      create: <T extends object>(value: T) => database!.create(requireTable(), value as never) as unknown as Promise<T>,
       upsert: (values: readonly Record<string, unknown>[], keys?: readonly string[]) => database!.upsert(requireTable(), values as never, keys as never),
-      set: (query: Record<string, unknown>, patch: Record<string, unknown>) => database!.set(requireTable(), requireQuery(query), requirePatch(patch)),
+      set: (query: Record<string, unknown>, patch: Record<string, unknown>) => database!.set(requireTable(), requireQuery(query), requirePatch(patch)) as Promise<{ matched?: number }>,
       remove: (query: Record<string, unknown>) => database!.remove(requireTable(), requireQuery(query)),
     });
     this.data = Object.freeze({

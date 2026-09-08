@@ -226,24 +226,24 @@ export class FaithBusinessTransactionService {
     });
     const economy: FaithAtomicEconomyApi = Object.freeze({
       getWallet: async () => atomicWallet(await users.get()),
-      canAfford: async (cost) => {
+      canAfford: async (cost: Readonly<FaithMoney>) => {
         const normalized = atomicMoney(cost), current = atomicWallet(await users.get());
         return requestedAtomicCurrencies(normalized).every((currency) => current[currency] >= normalized[currency]!);
       },
-      pay: async (cost) => {
+      pay: async (cost: Readonly<FaithMoney>) => {
         const normalized = atomicMoney(cost), current = atomicWallet(await users.get());
         const missing = requestedAtomicCurrencies(normalized).filter((currency) => current[currency] < normalized[currency]!);
         if (missing.length) throw new FaithCoreError("INSUFFICIENT_BALANCE", "货币余额不足", { uid, missing, wallet: current, cost: { ...normalized } });
         return users.change(Object.fromEntries(Object.entries(normalized).map(([key, value]) => [key, -value])) as UserValueDelta);
       },
-      creditFixed: (amount) => users.change(atomicMoney(amount) as UserValueDelta),
+      creditFixed: (amount: Readonly<FaithMoney>) => users.change(atomicMoney(amount) as UserValueDelta),
     });
     const getData = async () => {
       ensureActive();
       const [existing] = await database.get("faith_core_business", { uid, business });
       ensureActive();
       if (existing) return existing;
-      try { return await database.create("faith_core_business", { uid, business, private: {}, public: {} }); }
+      try { return await database.create("faith_core_business", { uid, business, version: 0, private: {}, public: {} }); }
       catch (error) {
         const [created] = await database.get("faith_core_business", { uid, business });
         if (created) return created;
@@ -252,12 +252,14 @@ export class FaithBusinessTransactionService {
     };
     const data: FaithAtomicBusinessDataApi = Object.freeze({
       get: getData,
-      set: async (next) => {
+      set: async (next: { private?: Record<string, unknown>; public?: Record<string, unknown> }) => {
         ensureActive();
         if (next.private === undefined && next.public === undefined) throw new Error("业务数据更新不能为空");
         const row = await getData();
         ensureActive();
-        const result = await database.set("faith_core_business", { id: row.id, private: row.private, public: row.public }, {
+        const version = Number.isSafeInteger(row.version) ? row.version : 0;
+        const result = await database.set("faith_core_business", { id: row.id, version }, {
+          version: version + 1,
           private: next.private === undefined ? row.private : cloneBusinessRecord(next.private),
           public: next.public === undefined ? row.public : cloneBusinessRecord(next.public),
         });

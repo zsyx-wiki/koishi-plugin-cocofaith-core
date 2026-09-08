@@ -51,16 +51,16 @@ export class FaithLifecycleService {
     return this.dispatch("game-day", Object.freeze(event));
   }
 
-  on(
+  on<T = unknown>(
     stage: FaithLifecycleStage,
-    handler: FaithLifecycleHandler,
+    handler: FaithLifecycleHandler<T>,
     options: LifecycleRegistrationOptions = {},
   ): FaithDisposable {
     if (typeof handler !== "function") throw new TypeError("生命周期处理器必须是函数");
     if (this.state === "disposed" || this.state === "disposing") throw new Error("CoCoFaith Core 正在或已经卸载");
     const registration: LifecycleRegistration = {
       id: ++this.sequence,
-      handler,
+      handler: handler as FaithLifecycleHandler,
       name: options.name ?? "anonymous",
       priority: options.priority ?? 0,
       critical: options.critical ?? false,

@@ -1,4 +1,5 @@
 import type { FaithProfessionDefinition } from "../types";
+import { isDeepStrictEqual } from "node:util";
 
 export class FaithProfessionRegistry {
   private definitions = new Map<string, Readonly<FaithProfessionDefinition>>();
@@ -8,7 +9,7 @@ export class FaithProfessionRegistry {
   register(definition: FaithProfessionDefinition, options: { override?: boolean; owner?: string } = {}) {
     const item = validateProfession(definition), existing = this.definitions.get(item.id), nameOwner = this.names.get(item.name);
     const owner = options.owner ?? "external", existingOwner = this.owners.get(item.id);
-    if (existing && existingOwner === owner && JSON.stringify(existing) === JSON.stringify(item)) return existing;
+    if (existing && existingOwner === owner && isDeepStrictEqual(existing, item)) return existing;
     if (!options.override && existing) throw new Error(`职业 ID 已注册：${item.id}`);
     if (existing && existingOwner !== owner) throw new Error(`职业 ${item.id} 归 ${existingOwner} 所有，${owner} 不能覆盖`);
     if (nameOwner && nameOwner !== item.id) throw new Error(`职业名称已由 ${nameOwner} 使用：${item.name}`);
@@ -18,10 +19,9 @@ export class FaithProfessionRegistry {
     return item;
   }
   registerMany(items: readonly FaithProfessionDefinition[], options: { override?: boolean; owner?: string } = {}) {
-    const registered: Readonly<FaithProfessionDefinition>[] = [];
-    try { for (const item of items) registered.push(this.register(item, options)); }
-    catch (error) { for (const item of registered) this.unregister(item.id, options.owner); throw error; }
-    return registered;
+    const definitions = new Map(this.definitions), names = new Map(this.names), owners = new Map(this.owners);
+    try { return items.map((item) => this.register(item, options)); }
+    catch (error) { this.definitions = definitions; this.names = names; this.owners = owners; throw error; }
   }
   unregister(id: string, owner?: string) { const item = this.definitions.get(id); if (!item) return false; if (owner && this.owners.get(id) !== owner) throw new Error(`职业 ${id} 不属于 ${owner}`); this.definitions.delete(id); this.names.delete(item.name); this.owners.delete(id); return true; }
   removeOwner(owner: string) { let count = 0; for (const [id, value] of [...this.owners]) if (value === owner) { this.unregister(id, owner); count++; } return count; }

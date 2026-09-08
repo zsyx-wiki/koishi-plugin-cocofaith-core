@@ -1,4 +1,5 @@
 import type { FaithItemLevelDefinition } from "../types";
+import { isDeepStrictEqual } from "node:util";
 
 export class FaithItemLevelRegistry {
   private levels = new Map<string, Readonly<FaithItemLevelDefinition>>();
@@ -7,13 +8,18 @@ export class FaithItemLevelRegistry {
     if (!input || !/^[\p{L}\p{N}_-]{1,32}$/u.test(input.id) || !input.name?.trim() || !Number.isFinite(input.rank)) throw new Error("物品等级定义无效");
     const owner = options.owner ?? "external", existingOwner = this.owners.get(input.id);
     const existing = this.levels.get(input.id);
-    if (existing && existingOwner === owner && JSON.stringify(existing) === JSON.stringify({ ...input, name: input.name.trim(), weight: input.weight ?? 1, metadata: input.metadata ?? {} })) return existing;
+    const normalized = { ...input, name: input.name.trim(), weight: input.weight ?? 1, metadata: input.metadata ?? {} };
+    if (existing && existingOwner === owner && isDeepStrictEqual(existing, normalized)) return existing;
     if (this.levels.has(input.id) && !options.replace) throw new Error(`物品等级已注册：${input.id}`);
     if (existingOwner && existingOwner !== owner) throw new Error(`物品等级 ${input.id} 不属于 ${owner}`);
-    const level = Object.freeze({ ...input, name: input.name.trim(), weight: input.weight ?? 1, metadata: Object.freeze({ ...(input.metadata ?? {}) }) });
+    const level = Object.freeze({ ...normalized, metadata: Object.freeze({ ...normalized.metadata }) });
     this.levels.set(level.id, level); this.owners.set(level.id, owner); return level;
   }
-  registerMany(values: readonly FaithItemLevelDefinition[], options: { owner?: string; replace?: boolean } = {}) { return values.map((value) => this.register(value, options)); }
+  registerMany(values: readonly FaithItemLevelDefinition[], options: { owner?: string; replace?: boolean } = {}) {
+    const levels = new Map(this.levels), owners = new Map(this.owners);
+    try { return values.map((value) => this.register(value, options)); }
+    catch (error) { this.levels = levels; this.owners = owners; throw error; }
+  }
   get(id: string) { return this.levels.get(id); }
   require(id: string) { const value = this.get(id); if (!value) throw new Error(`未注册物品等级：${id}`); return value; }
   all() { return [...this.levels.values()].sort((a, b) => b.rank - a.rank); }

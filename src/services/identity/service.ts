@@ -9,7 +9,7 @@ import { FaithUsersService } from "../users";
 import { FaithCoreError } from "../../errors";
 
 export class FaithIdentityService {
-  private resolved = new Map<string, number | null>();
+  private resolved = new Map<string, { uid: number | null; expiresAt: number }>();
   private pending = new Map<string, Promise<number | null>>();
   constructor(
     private ctx: Context,
@@ -26,12 +26,14 @@ export class FaithIdentityService {
     const identity = normalizeIdentity(input);
     if (database !== this.ctx.database) return this.resolveFromDatabase(identity, database);
     const key = identityCacheKey(identity);
-    if (this.resolved.has(key)) return this.resolved.get(key)!;
+    const cached = this.resolved.get(key);
+    if (cached && cached.expiresAt > Date.now()) return cached.uid;
+    if (cached) this.resolved.delete(key);
     const active = this.pending.get(key);
     if (active) return active;
     const work = this.resolveFromDatabase(identity, database).then((uid) => {
       if (this.resolved.size >= 10_000) this.resolved.delete(this.resolved.keys().next().value!);
-      this.resolved.set(key, uid);
+      this.resolved.set(key, { uid, expiresAt: Date.now() + (uid === null ? 2_000 : 300_000) });
       return uid;
     }).finally(() => this.pending.delete(key));
     this.pending.set(key, work);

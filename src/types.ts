@@ -95,6 +95,7 @@ export interface FaithCoreBusinessData {
   id: number;
   uid: number;
   business: string;
+  version: number;
   private: Record<string, unknown>;
   public: Record<string, unknown>;
 }
@@ -114,7 +115,7 @@ export interface FaithItemDefinition {
   marketable: boolean;
   price: number;
   obtainable: boolean;
-  actions?: string[];
+  actions?: readonly string[];
   openable?: FaithOpenableDefinition;
 }
 

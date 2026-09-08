@@ -7,7 +7,11 @@ export class FaithRegistryServiceBase {
     if (!options.override && this.registry.has(item.name)) throw new Error(`信仰已注册：${item.name}`);
     this.registry.set(item.name, item); return item;
   }
-  registerMany(definitions: readonly FaithDefinition[]) { return definitions.map((item) => this.register(item)); }
+  registerMany(definitions: readonly FaithDefinition[]) {
+    const registry = new Map(this.registry);
+    try { return definitions.map((item) => this.register(item)); }
+    catch (error) { this.registry = registry; throw error; }
+  }
   unregister(name: string) { return this.registry.delete(name.trim()); }
   get(name: string) { return this.registry.get(name.trim()); }
   require(name: string) { const item = this.get(name); if (!item) throw new Error(`信仰不存在：${name}`); return item; }
