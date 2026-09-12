@@ -14,6 +14,8 @@ import type { CoreDatabase, FaithTransactionService } from "./service";
 import type { FaithAuditService, FaithTransactionOptions } from "./audit";
 import type { FaithCurrency, FaithMoney, FaithWallet } from "../../economy";
 import { atomicTable, type AtomicTableDefinition, type FaithAtomicTableApi } from "./atomic-table";
+import type { FaithStatusIdentityService } from "../../status-identities";
+import type { FaithStatusIdentityState } from "../../types";
 
 export interface FaithAtomicUserApi {
   get(): Promise<FaithCoreUserData>;
@@ -35,6 +37,10 @@ export interface FaithAtomicBusinessDataApi {
   get(): Promise<FaithCoreBusinessData>;
   set(data: { private?: Record<string, unknown>; public?: Record<string, unknown> }): Promise<FaithCoreBusinessData>;
 }
+export interface FaithAtomicStatusIdentitiesApi {
+  get(identity: string): Promise<Readonly<FaithStatusIdentityState> | null>;
+  set(identity: string, value: { level: string; active: boolean; parameters?: Record<string, unknown> }): Promise<Readonly<FaithStatusIdentityState>>;
+}
 
 export interface FaithAtomicScope {
   readonly table: FaithAtomicTableApi;
@@ -43,6 +49,7 @@ export interface FaithAtomicScope {
   readonly items: FaithAtomicItemsApi;
   readonly data: FaithAtomicBusinessDataApi;
   readonly economy: FaithAtomicEconomyApi;
+  readonly statusIdentities: FaithAtomicStatusIdentitiesApi;
   afterCommit(callback: () => void | Promise<void>): void;
   afterRollback(callback: (error: unknown) => void | Promise<void>): void;
 }
@@ -68,6 +75,7 @@ export class FaithBusinessTransactionService {
     private professions: FaithProfessionService,
     private audit: FaithAuditService,
     private faiths: FaithRegistryService,
+    private statusIdentitiesService: FaithStatusIdentityService,
   ) {}
 
   async run<T>(business: string, uid: number, task: (scope: FaithAtomicScope) => Promise<T>, options: FaithTransactionOptions = {}, table?: AtomicTableDefinition): Promise<T> {
@@ -269,8 +277,19 @@ export class FaithBusinessTransactionService {
         return updated;
       },
     });
+    const statusIdentities: FaithAtomicStatusIdentitiesApi = Object.freeze({
+      get: async (identity: string) => { ensureActive(); return this.statusIdentitiesService.state(uid, identity, database); },
+      set: async (identity: string, value: { level: string; active: boolean; parameters?: Record<string, unknown> }) => {
+        ensureActive();
+        const before = await this.statusIdentitiesService.state(uid, identity, database);
+        ensureActive();
+        const after = await this.statusIdentitiesService.writeForOwner(uid, identity, value, `business:${business}`, database);
+        postEvents.push({ event: "status-identity/changed", payload: { uid, identity, before, after, business } });
+        return after;
+      },
+    });
     return Object.freeze({
-      uid, users, items, economy, data, table: atomicTable(database, table, ensureActive),
+      uid, users, items, economy, data, statusIdentities, table: atomicTable(database, table, ensureActive),
       afterCommit(callback: () => void | Promise<void>) { ensureActive(); if (typeof callback !== "function") throw new TypeError("afterCommit 必须是函数"); afterCommit.push(callback); },
       afterRollback(callback: (error: unknown) => void | Promise<void>) { ensureActive(); if (typeof callback !== "function") throw new TypeError("afterRollback 必须是函数"); afterRollback.push(callback); },
     });

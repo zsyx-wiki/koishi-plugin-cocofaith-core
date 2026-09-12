@@ -80,6 +80,35 @@ export interface FaithEffectRow {
   metadata: Record<string, unknown>;
 }
 
+export interface FaithStatusIdentityBonus {
+  type: string;
+  modifier?: number;
+  fixedBonus?: number;
+  detail?: string;
+}
+export interface FaithStatusIdentityLevel {
+  id: string;
+  name: string;
+  rank: number;
+  bonuses?: readonly FaithStatusIdentityBonus[];
+}
+export interface FaithStatusIdentityDefinition {
+  id: string;
+  name: string;
+  description?: string;
+  levels: readonly FaithStatusIdentityLevel[];
+}
+export interface FaithStatusIdentityState {
+  uid: number;
+  identity: string;
+  level: string;
+  active: boolean;
+  parameters: Readonly<Record<string, unknown>>;
+  version: number;
+  updated_at: Date;
+}
+export interface FaithStatusIdentityRow extends FaithStatusIdentityState { id: number; }
+
 export interface FaithItemLevelDefinition {
   id: string; name: string; rank: number; color?: string; weight?: number; metadata?: Readonly<Record<string, unknown>>;
 }

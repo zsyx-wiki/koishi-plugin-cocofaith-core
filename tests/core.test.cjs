@@ -161,6 +161,34 @@ test('bonus providers run concurrently while preserving priority order', async (
   assert.equal(result.finalValue, 13)
 })
 
+test('status identities enforce ownership, gate bonuses by active state and batch cold reads', async () => {
+  const rows = new Map()
+  let reads = 0
+  const database = {
+    get: async (_table, query) => {
+      reads++
+      return [...rows.values()].filter((row) => Object.entries(query).every(([key, value]) => row[key] === value))
+    },
+    create: async (_table, value) => { const row = { id: rows.size + 1, ...value }; rows.set(`${row.uid}:${row.identity}`, row); return row },
+    set: async (_table, query, patch) => {
+      const key = `${query.uid}:${query.identity}`, row = rows.get(key)
+      if (!row || row.version !== query.version) return { matched: 0 }
+      rows.set(key, { ...row, ...patch }); return { matched: 1 }
+    },
+  }
+  const service = new core.FaithStatusIdentityService({ database }, { require: async (uid) => ({ uid }) })
+  service.register({ id: 'club', name: 'Club', levels: [{ id: 'gold', name: 'Gold', rank: 1, bonuses: [{ type: 'gold', modifier: .4 }] }] }, 'business:club')
+  await assert.rejects(() => service.writeForOwner(10000000, 'club', { level: 'gold', active: true }, 'business:other', database), (error) => error.code === 'PERMISSION_DENIED')
+  await service.writeForOwner(10000000, 'club', { level: 'gold', active: true, parameters: { fees: 60 } }, 'business:club', database)
+  const before = reads
+  assert.equal((await service.provider({ uid: 10000000, type: 'gold' }))[0].modifier, .4)
+  assert.equal(reads, before + 1)
+  await service.provider({ uid: 10000000, type: 'gold' })
+  assert.equal(reads, before + 1)
+  await service.writeForOwner(10000000, 'club', { level: 'gold', active: false }, 'business:club', database)
+  assert.deepEqual(await service.provider({ uid: 10000000, type: 'gold' }), [])
+})
+
 test('hooks preserve priority and once semantics', async () => {
   const hooks = new core.FaithHooksService({ logger: () => ({ error() {} }) })
   const order = []

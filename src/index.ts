@@ -49,4 +49,5 @@ export * from "./errors";
 export * from "./effects";
 export * from "./integrity";
 export * from "./health";
+export * from "./status-identities";
 export * from "./version";

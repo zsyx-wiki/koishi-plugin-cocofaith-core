@@ -6,7 +6,7 @@ import type {
   FaithCoreUserData,
   FaithCoreUserIdentity,
   FaithCoreFaithRow,
-  FaithCoreTransactionRow, FaithCoreLedgerEntry, FaithPermissionGrant, FaithEffectRow,
+  FaithCoreTransactionRow, FaithCoreLedgerEntry, FaithPermissionGrant, FaithEffectRow, FaithStatusIdentityRow,
 } from "../types";
 import { assertBusinessName } from "../services/validation";
 
@@ -98,6 +98,10 @@ export function registerCoreModels(ctx: Context) {
   ctx.model.extend("faith_core_bulk_operations", {
     operation_id: "string(128)", kind: "string(128)", payload: "json", created_at: "timestamp",
   }, { primary: "operation_id" });
+  ctx.model.extend("faith_core_status_identities", {
+    id: "unsigned", uid: "unsigned", identity: "string(64)", level: "string(64)", active: "boolean",
+    parameters: "json", version: { type: "unsigned", initial: 0 }, updated_at: "timestamp",
+  }, { primary: "id", autoInc: true, unique: [["uid", "identity"]], indexes: [["identity", "active"], "uid"] });
 }
 
 export type BusinessModelFields = Record<string, Field.Type | Field>;
@@ -129,5 +133,6 @@ declare module "koishi" {
     faith_core_permission_grants: FaithPermissionGrant;
     faith_core_effects: FaithEffectRow;
     faith_core_bulk_operations: { operation_id: string; kind: string; payload: Record<string, unknown>; created_at: Date };
+    faith_core_status_identities: FaithStatusIdentityRow;
   }
 }

@@ -4,7 +4,7 @@ import type { BusinessModelFields } from "../../database";
 import type { FaithLifecycleScope, FaithLifecycleService } from "../../lifecycle";
 import type { FaithBusinessDataService } from "./data";
 import { assertBusinessName } from "../validation";
-import { createBusinessBonusesApi, createBusinessBulkApi, createBusinessEconomyApi, createBusinessEffectsApi, createBusinessHooksApi, createBusinessItemsApi, createBusinessPermissionsApi, createBusinessProfessionsApi, type FaithBusinessBonusesApi, type FaithBusinessBulkApi, type FaithBusinessEconomyApi, type FaithBusinessEffectsApi, type FaithBusinessFaithsApi, type FaithBusinessHooksApi, type FaithBusinessIdentitiesApi, type FaithBusinessItemsApi, type FaithBusinessPermissionsApi, type FaithBusinessProfessionsApi, type FaithBusinessSharedApis, type FaithBusinessUsersApi } from "./scope-api";
+import { createBusinessBonusesApi, createBusinessBulkApi, createBusinessEconomyApi, createBusinessEffectsApi, createBusinessHooksApi, createBusinessItemsApi, createBusinessPermissionsApi, createBusinessProfessionsApi, createBusinessStatusIdentitiesApi, type FaithBusinessBonusesApi, type FaithBusinessBulkApi, type FaithBusinessEconomyApi, type FaithBusinessEffectsApi, type FaithBusinessFaithsApi, type FaithBusinessHooksApi, type FaithBusinessIdentitiesApi, type FaithBusinessItemsApi, type FaithBusinessPermissionsApi, type FaithBusinessProfessionsApi, type FaithBusinessSharedApis, type FaithBusinessStatusIdentitiesApi, type FaithBusinessUsersApi } from "./scope-api";
 import type { FaithHooksService } from "../../hooks";
 import type { FaithBonusService } from "../../bonus";
 import type { FaithBusinessTransactionService, FaithAtomicScope } from "../transaction";
@@ -26,6 +26,7 @@ export class FaithBusinessCoreScope {
   readonly bonuses: Readonly<FaithBusinessBonusesApi>;
   readonly professions: Readonly<FaithBusinessProfessionsApi>;
   readonly identities: Readonly<FaithBusinessIdentitiesApi>;
+  readonly statusIdentities: Readonly<FaithBusinessStatusIdentitiesApi>;
   readonly faiths: Readonly<FaithBusinessFaithsApi>;
   readonly transaction: FaithBusinessAtomicTransactionApi;
   readonly effects: Readonly<FaithBusinessEffectsApi>;
@@ -70,6 +71,7 @@ export class FaithBusinessCoreScope {
     this.bonuses = createBusinessBonusesApi(bonuses, name);
     this.professions = createBusinessProfessionsApi(professions, name);
     this.identities = apis.identities;
+    this.statusIdentities = createBusinessStatusIdentitiesApi(apis.statusIdentities, name);
     this.faiths = apis.faiths;
     this.effects = createBusinessEffectsApi(apis.effects, name);
     this.bulk = createBusinessBulkApi(apis.bulk, name);

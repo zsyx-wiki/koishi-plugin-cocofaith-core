@@ -13,6 +13,8 @@ import type { FaithDisposable } from "../../lifecycle";
 import type { CoreDatabase } from "../transaction";
 import type { FaithBulkOperationsService, FaithBulkOptions, FaithBulkResult } from "../users";
 import type { FaithEconomyService, FaithEconomyOptions, FaithMoney, FaithRewardOptions, FaithRewardPreview, FaithWallet, FaithEconomyChangeResult, FaithTransferResult } from "../../economy";
+import type { FaithStatusIdentityService } from "../../status-identities";
+import type { FaithStatusIdentityDefinition } from "../../types";
 
 export interface FaithBusinessUsersApi {
   listUids(after?: number, limit?: number): Promise<number[]>;
@@ -74,6 +76,15 @@ export interface FaithBusinessIdentitiesApi {
   list(uid: number): ReturnType<FaithIdentityService["list"]>;
   /** 只给已经存在的 UID 增加身份，不创建用户，也不合并两个 UID。 */
   bindExisting(uid: number, input: IdentityInput): Promise<boolean>;
+}
+export interface FaithBusinessStatusIdentitiesApi {
+  register(definition: FaithStatusIdentityDefinition): FaithDisposable;
+  get(id: string): Readonly<FaithStatusIdentityDefinition> | undefined;
+  require(id: string): Readonly<FaithStatusIdentityDefinition>;
+  all(): readonly Readonly<FaithStatusIdentityDefinition>[];
+  state(uid: number, identity: string): ReturnType<FaithStatusIdentityService["state"]>;
+  list(uid: number): ReturnType<FaithStatusIdentityService["list"]>;
+  listByIdentity(identity: string, options?: { active?: boolean; afterUid?: number; limit?: number }): ReturnType<FaithStatusIdentityService["listByIdentity"]>;
 }
 export interface FaithBusinessFaithsApi {
   get(name: string): Readonly<FaithDefinition> | undefined;
@@ -179,6 +190,15 @@ export function createBusinessIdentitiesApi(service: FaithIdentityService): Read
     bindExisting: (uid: number, identity: IdentityInput) => service.bind(uid, identity),
   });
 }
+export function createBusinessStatusIdentitiesApi(service: FaithStatusIdentityService, business: string): Readonly<FaithBusinessStatusIdentitiesApi> {
+  const owner = `business:${business}`;
+  return Object.freeze({
+    register: (definition: FaithStatusIdentityDefinition) => service.register(definition, owner),
+    get: (id: string) => service.get(id), require: (id: string) => service.require(id), all: () => service.all(),
+    state: (uid: number, identity: string) => service.state(uid, identity), list: (uid: number) => service.list(uid),
+    listByIdentity: (identity: string, options?: { active?: boolean; afterUid?: number; limit?: number }) => service.listByIdentity(identity, options),
+  });
+}
 
 export function createBusinessFaithsApi(service: FaithRegistryService): Readonly<FaithBusinessFaithsApi> {
   return Object.freeze({
@@ -257,6 +277,7 @@ export function createBusinessSharedApis(
   effects: FaithEffectsService,
   bulk: FaithBulkOperationsService,
   economy: FaithEconomyService,
+  statusIdentities: FaithStatusIdentityService,
 ) {
   return Object.freeze({
     users: createBusinessUsersApi(users),
@@ -267,6 +288,7 @@ export function createBusinessSharedApis(
     effects,
     bulk,
     economy,
+    statusIdentities,
   });
 }
 

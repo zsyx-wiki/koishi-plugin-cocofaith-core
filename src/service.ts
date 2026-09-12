@@ -17,6 +17,7 @@ import { FaithEffectsService } from "./effects";
 import { FaithIntegrityService } from "./integrity";
 import { FaithHealthService } from "./health";
 import { FaithEconomyService } from "./economy";
+import { FaithStatusIdentityService } from "./status-identities";
 import { normalizeCoreConfig } from "./config/validation";
 import { FaithCoreError } from "./errors";
 import {
@@ -41,6 +42,7 @@ export const CORE_SERVICE_ORDER = [
   "transactions",
   "uids",
   "users",
+  "statusIdentities",
   "bonuses",
   "identities",
   "businessData",
@@ -66,7 +68,7 @@ export class FaithCoreService extends Service {
   private readonly capabilitySet = new Set([
     "transactions.idempotency", "transactions.multi-uid", "transactions.ledger", "transactions.callbacks",
     "permissions.persistent", "items.levels", "effects.persistent", "lifecycle.game-day", "integrity.check",
-    "bulk.idempotent", "inventory.lightweight", "config.reload",
+    "bulk.idempotent", "inventory.lightweight", "config.reload", "status-identities.levels",
   ]);
   readonly capabilities = Object.freeze({
     has: (capability: string) => this.capabilitySet.has(capability),
@@ -83,6 +85,7 @@ export class FaithCoreService extends Service {
   private readonly transactions: FaithTransactionService;
   private readonly uids = new FaithUidService();
   readonly users: FaithUsersService;
+  readonly statusIdentities: FaithStatusIdentityService;
   private readonly identities: FaithIdentityService;
   readonly adapter: Readonly<FaithAdapterIdentityApi>;
   private readonly businessData: FaithBusinessDataService;
@@ -110,8 +113,10 @@ export class FaithCoreService extends Service {
     this.gameDay = new FaithGameDayService(ctx, this.config.gameDay, this.lifecycle, this.locks, this.hooks);
     this.transactions = new FaithTransactionService(ctx, this.hooks);
     this.users = new FaithUsersService(ctx, this.transactions, this.locks, this.hooks, this.audit);
+    this.statusIdentities = new FaithStatusIdentityService(ctx, this.users);
     this.bonuses = new FaithBonusService(this.users, this.hooks);
     this.bonuses.registerProvider(this.effects.provider, { id: "core:persistent-effects", owner: "core", priority: -10_000 });
+    this.bonuses.registerProvider(this.statusIdentities.provider, { id: "core:status-identities", owner: "core", priority: -9_000 });
     this.users.attachBonuses(this.bonuses);
     this.identities = new FaithIdentityService(
       ctx,
@@ -135,11 +140,11 @@ export class FaithCoreService extends Service {
     this.integrity = new FaithIntegrityService(ctx, this.items, this.professions, this.faiths);
     this.health = new FaithHealthService(ctx, this);
     this.businessTransactions = new FaithBusinessTransactionService(
-      this.transactions, this.locks, this.hooks, this.users, this.items, this.professions, this.audit, this.faiths,
+      this.transactions, this.locks, this.hooks, this.users, this.items, this.professions, this.audit, this.faiths, this.statusIdentities,
     );
     this.economy = new FaithEconomyService(this.users, this.bonuses, this.businessTransactions);
     this.bulk = new FaithBulkOperationsService(ctx, this.users, this.items, this.businessTransactions);
-    this.businessApis = createBusinessSharedApis(this.users, this.items, this.permissions, this.bonuses, this.identities, this.faiths, this.effects, this.bulk, this.economy);
+    this.businessApis = createBusinessSharedApis(this.users, this.items, this.permissions, this.bonuses, this.identities, this.faiths, this.effects, this.bulk, this.economy, this.statusIdentities);
     this.registerBuiltInItems();
     this.registerCoreLifecycle();
   }
@@ -194,6 +199,7 @@ export class FaithCoreService extends Service {
       this.permissions.clear();
       this.bonuses.clear();
       this.professions.clear();
+      this.statusIdentities.clear();
       this.faiths.clear();
       this.items.clear();
     });
