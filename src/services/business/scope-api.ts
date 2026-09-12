@@ -69,7 +69,12 @@ export interface FaithBusinessProfessionsApi {
   list(query?: { faith?: string; type?: string; source?: string }): Readonly<FaithProfessionDefinition>[];
   getUserProfession(uid: number): Promise<Readonly<FaithProfessionDefinition> | null>;
 }
-export interface FaithBusinessIdentitiesApi { resolve(input: IdentityInput): Promise<number | null>; }
+export interface FaithBusinessIdentitiesApi {
+  resolve(input: IdentityInput): Promise<number | null>;
+  list(uid: number): ReturnType<FaithIdentityService["list"]>;
+  /** 只给已经存在的 UID 增加身份，不创建用户，也不合并两个 UID。 */
+  bindExisting(uid: number, input: IdentityInput): Promise<boolean>;
+}
 export interface FaithBusinessFaithsApi {
   get(name: string): Readonly<FaithDefinition> | undefined;
   require(name: string): Readonly<FaithDefinition>;
@@ -168,7 +173,11 @@ export function createBusinessProfessionsApi(service: FaithProfessionService, bu
 }
 
 export function createBusinessIdentitiesApi(service: FaithIdentityService): Readonly<FaithBusinessIdentitiesApi> {
-  return Object.freeze({ resolve: (identity: IdentityInput) => service.resolve(identity) });
+  return Object.freeze({
+    resolve: (identity: IdentityInput) => service.resolve(identity),
+    list: (uid: number) => service.list(uid),
+    bindExisting: (uid: number, identity: IdentityInput) => service.bind(uid, identity),
+  });
 }
 
 export function createBusinessFaithsApi(service: FaithRegistryService): Readonly<FaithBusinessFaithsApi> {
