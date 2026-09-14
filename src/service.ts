@@ -140,7 +140,16 @@ export class FaithCoreService extends Service {
     this.integrity = new FaithIntegrityService(ctx, this.items, this.professions, this.faiths);
     this.health = new FaithHealthService(ctx, this);
     this.businessTransactions = new FaithBusinessTransactionService(
-      this.transactions, this.locks, this.hooks, this.users, this.items, this.professions, this.audit, this.faiths, this.statusIdentities,
+      this.transactions,
+      this.locks,
+      this.hooks,
+      this.users,
+      this.items,
+      this.professions,
+      this.audit,
+      this.faiths,
+      this.statusIdentities,
+      this.bonuses,
     );
     this.economy = new FaithEconomyService(this.users, this.bonuses, this.businessTransactions);
     this.bulk = new FaithBulkOperationsService(ctx, this.users, this.items, this.businessTransactions);

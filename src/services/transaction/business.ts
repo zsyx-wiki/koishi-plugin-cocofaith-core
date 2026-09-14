@@ -16,6 +16,8 @@ import type { FaithCurrency, FaithMoney, FaithWallet } from "../../economy";
 import { atomicTable, type AtomicTableDefinition, type FaithAtomicTableApi } from "./atomic-table";
 import type { FaithStatusIdentityService } from "../../status-identities";
 import type { FaithStatusIdentityState } from "../../types";
+import type { FaithBonusService } from "../../bonus";
+import type { FaithEconomyChangeResult } from "../../economy";
 
 export interface FaithAtomicUserApi {
   get(): Promise<FaithCoreUserData>;
@@ -58,8 +60,19 @@ export interface FaithAtomicEconomyApi {
   getWallet(): Promise<FaithWallet>;
   canAfford(cost: Readonly<FaithMoney>): Promise<boolean>;
   pay(cost: Readonly<FaithMoney>): Promise<FaithCoreUserData>;
+  /** 在当前事务内计算加成并发放玩法奖励。 */
+  reward(
+    amount: Readonly<FaithMoney>,
+    options?: FaithAtomicRewardOptions,
+  ): Promise<FaithEconomyChangeResult>;
   /** 固定值入账，用于退款、奖池返还或已在事务外计算过加成的奖励。 */
   creditFixed(amount: Readonly<FaithMoney>): Promise<FaithCoreUserData>;
+}
+
+export interface FaithAtomicRewardOptions {
+  applyBonuses?: boolean;
+  source?: string;
+  metadata?: Readonly<Record<string, unknown>>;
 }
 
 /** 仅向 Business 暴露白名单操作，绝不泄露 Koishi Database/Transaction。 */
@@ -76,6 +89,7 @@ export class FaithBusinessTransactionService {
     private audit: FaithAuditService,
     private faiths: FaithRegistryService,
     private statusIdentitiesService: FaithStatusIdentityService,
+    private bonuses: FaithBonusService,
   ) {}
 
   async run<T>(business: string, uid: number, task: (scope: FaithAtomicScope) => Promise<T>, options: FaithTransactionOptions = {}, table?: AtomicTableDefinition): Promise<T> {
@@ -243,6 +257,43 @@ export class FaithBusinessTransactionService {
         const missing = requestedAtomicCurrencies(normalized).filter((currency) => current[currency] < normalized[currency]!);
         if (missing.length) throw new FaithCoreError("INSUFFICIENT_BALANCE", "货币余额不足", { uid, missing, wallet: current, cost: { ...normalized } });
         return users.change(Object.fromEntries(Object.entries(normalized).map(([key, value]) => [key, -value])) as UserValueDelta);
+      },
+      reward: async (amount: Readonly<FaithMoney>, options: FaithAtomicRewardOptions = {}) => {
+        const requested = atomicMoney(amount);
+        const before = currentUser();
+        const source = options.source ?? `${business}.reward`;
+        const applied: FaithMoney = {};
+
+        for (const currency of requestedAtomicCurrencies(requested)) {
+          const baseValue = requested[currency]!;
+          if (options.applyBonuses === false) {
+            applied[currency] = baseValue;
+            continue;
+          }
+          const calculation = await this.bonuses.calculateForUser(before, {
+            uid,
+            type: currency,
+            baseValue,
+            source,
+            metadata: options.metadata,
+          });
+          if (!Number.isSafeInteger(calculation.finalValue) || calculation.finalValue < 0) {
+            throw new FaithCoreError("VALIDATION_FAILED", `加成后的${currency}奖励无效`);
+          }
+          if (calculation.finalValue > 0) applied[currency] = calculation.finalValue;
+        }
+
+        const user = Object.keys(applied).length
+          ? await users.change(applied as UserValueDelta)
+          : before;
+        return Object.freeze({
+          uid,
+          requested,
+          applied: Object.freeze({ ...applied }),
+          before: atomicWallet(before),
+          after: atomicWallet(user),
+          user,
+        });
       },
       creditFixed: (amount: Readonly<FaithMoney>) => users.change(atomicMoney(amount) as UserValueDelta),
     });

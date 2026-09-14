@@ -209,6 +209,8 @@ export interface FaithDefinition {
   name: string;
   path: string;
   type: "fixed" | "dynamic";
+  /** 祷告成功时展示的神名；动态信仰默认使用信仰名。 */
+  deity_name?: string;
   creator_uid?: number;
   believer_count: number;
   prayer_word?: string;

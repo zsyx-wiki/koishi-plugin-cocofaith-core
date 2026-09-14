@@ -92,8 +92,10 @@ export interface FaithBusinessFaithsApi {
   has(name: string): boolean;
   all(): Readonly<FaithDefinition>[];
   byPath(path: string): Readonly<FaithDefinition>[];
+  resolvePrayerWord(word: string): Readonly<FaithDefinition> | undefined;
   registerUser(identity: IdentityInput, faithName: string, initialGold?: number): Promise<FaithCoreUserData>;
   registerDynamic(input: { name: string; path: string; creatorUid: number; prayerWord?: string; metadata?: Record<string, unknown> }): Promise<Readonly<FaithDefinition>>;
+  unregisterDynamic(name: string, creatorUid?: number): Promise<boolean>;
   setPrayerWord(name: string, word: string): Promise<Readonly<FaithDefinition>>;
   setCustomProfession(name: string, type: string, professionName: string): Promise<Readonly<FaithDefinition>>;
 }
@@ -203,8 +205,10 @@ export function createBusinessStatusIdentitiesApi(service: FaithStatusIdentitySe
 export function createBusinessFaithsApi(service: FaithRegistryService): Readonly<FaithBusinessFaithsApi> {
   return Object.freeze({
     get: (name: string) => service.get(name), require: (name: string) => service.require(name), has: (name: string) => service.has(name), all: () => service.all(), byPath: (path: string) => service.byPath(path),
+    resolvePrayerWord: (word: string) => service.resolvePrayerWord(word),
     registerUser: (identity: IdentityInput, faith: string, initialGold?: number) => service.registerUser(identity, faith, initialGold),
     registerDynamic: (input: { name: string; path: string; creatorUid: number; prayerWord?: string; metadata?: Record<string, unknown> }) => service.registerDynamic(input),
+    unregisterDynamic: (name: string, creatorUid?: number) => service.unregisterDynamic(name, creatorUid),
     setPrayerWord: (name: string, word: string) => service.setPrayerWord(name, word),
     setCustomProfession: (name: string, type: string, profession: string) => service.setCustomProfession(name, type, profession),
   });

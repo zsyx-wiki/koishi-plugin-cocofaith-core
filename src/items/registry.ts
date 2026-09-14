@@ -122,5 +122,17 @@ function freezeOpenable(value: NonNullable<FaithItemDefinition["openable"]>) {
 }
 
 function sameDefinition(current: Readonly<FaithItemDefinition>, input: FaithItemDefinition) {
-  return isDeepStrictEqual(current, input);
+  return isDeepStrictEqual(current, {
+    ...input,
+    actions: input.actions ? [...input.actions] : undefined,
+    openable: input.openable ? {
+      guaranteed: input.openable.guaranteed ? { ...input.openable.guaranteed } : undefined,
+      independentDrops: input.openable.independentDrops?.map((entry) => ({ ...entry })),
+      randomDrop: input.openable.randomDrop ? {
+        ...input.openable.randomDrop,
+        goldRange: input.openable.randomDrop.goldRange ? [...input.openable.randomDrop.goldRange] : undefined,
+        itemPool: input.openable.randomDrop.itemPool.map((entry) => ({ ...entry })),
+      } : undefined,
+    } : undefined,
+  });
 }

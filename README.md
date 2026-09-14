@@ -31,6 +31,8 @@ CoCoFaith Core 是 CoCoFaith v3 的基础插件，负责保存公共数据并向
 
 Core 创建的数据库表统一使用 `faith_core_` 前缀。删除某个平台身份不会同时删除玩家资产，已经分配的 UID 也不会重新使用。
 
+Core 同时提供轻量的 Gameplay SDK。普通玩法可以通过 `defineGameplay()` 声明命令、配置和原子执行方式，不需要自行处理 UID 校验、锁、幂等键、业务状态保存或消息结果包装。复杂玩法仍可使用原有 Business Module 和完整 Business Scope。
+
 ## 安装
 
 ```bash
@@ -73,6 +75,19 @@ const inventory = await ctx.faithCore.items.getInventory(uid)
 await ctx.faithCore.economy.reward(uid, { gold: 100 }, {
   source: 'signin.reward',
 })
+```
+
+在 Business 原子事务中可以直接发放带加成的奖励：
+
+```ts
+await core.transaction.run(uid, async (tx) => {
+  const reward = await tx.economy.reward(
+    { gold: 100 },
+    { source: "example.reward" },
+  )
+  await tx.data.set({ private: { claimed: true } })
+  return reward
+}, { source: "example.claim" })
 ```
 
 需要同时修改数值、背包或业务数据时，应使用 Business Scope 提供的原子事务，不要拆成多次独立写入。

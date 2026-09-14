@@ -52,25 +52,66 @@ export class FaithRegistryService extends FaithRegistryServiceBase {
   }
 
   async registerDynamic(input: { name: string; path: string; creatorUid: number; prayerWord?: string; metadata?: Record<string, unknown> }) {
+    const definition = await this.locks.run("faith:registry", () => this.createDynamic(input));
+    await this.hooks.emit("faith/registered", definition);
+    return definition;
+  }
+
+  private async createDynamic(input: { name: string; path: string; creatorUid: number; prayerWord?: string; metadata?: Record<string, unknown> }) {
     if (this.has(input.name)) throw new Error(`信仰已存在：${input.name}`);
     await this.users.require(input.creatorUid);
-    const definition = this.register({ name: input.name, path: input.path, type: "dynamic", creator_uid: input.creatorUid, believer_count: 1, prayer_word: input.prayerWord?.trim() || undefined, custom_professions: {}, metadata: input.metadata ?? {} });
+    // 创建信仰并不隐式修改创建者的当前信仰；信徒数应由 setFaiths/abandonFaith
+    // 在同一用户事务中维护。旧实现从 1 开始会在创建者随后加入时重复计数。
+    const definition = this.register({ name: input.name, path: input.path, type: "dynamic", creator_uid: input.creatorUid, believer_count: 0, prayer_word: input.prayerWord?.trim() || undefined, custom_professions: {}, metadata: input.metadata ?? {} });
     try {
       await this.ctx.database.create("faith_core_faiths", {
         name: definition.name, path: definition.path, type: "dynamic", creator_uid: input.creatorUid,
-        believer_count: 1, prayer_word: definition.prayer_word ?? "", custom_professions: {}, metadata: definition.metadata ?? {}, created_at: new Date(),
+        believer_count: 0, prayer_word: definition.prayer_word ?? "", custom_professions: {}, metadata: definition.metadata ?? {}, created_at: new Date(),
       });
     } catch (error) { this.unregister(definition.name); throw error; }
-    await this.hooks.emit("faith/registered", definition); return definition;
+    return definition;
+  }
+
+  /** 仅用于尚无信徒的动态信仰创建补偿；不会删除已投入使用的信仰。 */
+  async unregisterDynamic(name: string, creatorUid?: number) {
+    const faith = await this.locks.run("faith:registry", () => this.removeDynamic(name, creatorUid));
+    await this.hooks.emit("faith/unregistered", faith);
+    return true;
+  }
+
+  private async removeDynamic(name: string, creatorUid?: number) {
+    const faith = this.requireDynamic(name);
+    if (creatorUid !== undefined && faith.creator_uid !== creatorUid) {
+      throw new FaithCoreError("PERMISSION_DENIED", `动态信仰 ${name} 不属于 UID ${creatorUid}`);
+    }
+    const users = await this.ctx.database.get("faith_core_users_data", {}, { fields: ["uid", "faiths"] });
+    if (users.some((user) => user.faiths.includes(faith.name))) {
+      throw new FaithCoreError("CONFLICT", `动态信仰 ${name} 仍有信徒，不能注销`);
+    }
+    await this.ctx.database.transact(async (database) => {
+      await database.remove("faith_core_faiths", { name: faith.name });
+      await database.remove("faith_core_faith_stats", { name: faith.name });
+    });
+    this.professions.removeOwner(`faith:${faith.name}`);
+    this.unregister(faith.name);
+    return faith;
   }
 
   async setPrayerWord(name: string, word: string) {
+    const updated = await this.locks.run("faith:registry", () => this.updatePrayerWord(name, word));
+    await this.hooks.emit("faith/updated", updated);
+    return updated;
+  }
+
+  private async updatePrayerWord(name: string, word: string) {
     const faith = this.requireDynamic(name), value = word.trim();
     if (value.length > 1024) throw new Error("祷词不能超过 1024 字符");
+    const owner = value ? this.resolvePrayerWord(value) : undefined;
+    if (owner && owner.name !== faith.name) throw new FaithCoreError("CONFLICT", `祷词已由信仰 ${owner.name} 使用`);
     const write = await this.ctx.database.set("faith_core_faiths", { name: faith.name }, { prayer_word: value });
     if (write.matched !== 1) throw new FaithCoreError("DATA_INTEGRITY_ERROR", `动态信仰数据库记录不存在：${faith.name}`);
     const updated = this.register({ ...faith, prayer_word: value || undefined }, { override: true });
-    await this.hooks.emit("faith/updated", updated); return updated;
+    return updated;
   }
 
   async setCustomProfession(name: string, type: string, professionName: string) {

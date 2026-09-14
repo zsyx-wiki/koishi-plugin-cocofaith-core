@@ -120,6 +120,27 @@ test('item levels have stable rarity ordering', () => {
   assert.throws(() => levels.register({ id: 'D', name: 'D', rank: 1 }, { owner: 'other', replace: true }))
 })
 
+test('same owner may idempotently register an identical item after module reload', () => {
+  const registry = new core.FaithItemRegistry()
+  const item = { item_id: 'reload_item', name: '重载物品', type: '道具', level: 'EX', description: '', max_quantity: 1, marketable: false, price: 0, obtainable: false }
+  const first = registry.register(item, { owner: 'business:test' })
+  const second = registry.register(item, { owner: 'business:test' })
+  assert.equal(second, first)
+  assert.throws(() => registry.register(item, { owner: 'business:other' }))
+})
+
+test('faith prayer words resolve in constant time and stay unique across updates', () => {
+  const registry = new core.FaithRegistryServiceBase()
+  registry.registerMany(core.CORE_FAITHS)
+  assert.equal(registry.resolvePrayerWord('洞窥本质，行见真理').name, '真理')
+  registry.register({ name: '椰神', path: '生命', type: 'dynamic', believer_count: 0, prayer_word: '椰风，神临' })
+  assert.equal(registry.resolvePrayerWord('椰风，神临').name, '椰神')
+  assert.throws(() => registry.register({ name: '重复', path: '生命', type: 'dynamic', believer_count: 0, prayer_word: '椰风，神临' }))
+  registry.register({ ...registry.require('椰神'), prayer_word: '椰落，风止' }, { override: true })
+  assert.equal(registry.resolvePrayerWord('椰风，神临'), undefined)
+  assert.equal(registry.resolvePrayerWord('椰落，风止').name, '椰神')
+})
+
 test('business records reject prototype pollution and circular data', () => {
   assert.throws(() => core.cloneBusinessRecord(JSON.parse('{"__proto__":{"polluted":true}}')))
   const value = {}; value.self = value
@@ -281,6 +302,60 @@ test('economy distinguishes bonus rewards from fixed payments and refunds', asyn
   assert.equal(user.ascension_score, 15)
   await assert.rejects(() => economy.pay(user.uid, { gold: 999 }, { source: 'shop.buy' }), (error) => error.code === 'INSUFFICIENT_BALANCE')
   await assert.rejects(() => economy.reward(user.uid, { gold: 1 }, { source: 'invalid' }), (error) => error.code === 'VALIDATION_FAILED')
+})
+
+test('atomic gameplay reward applies bonuses without leaving the transaction', async () => {
+  let row = {
+    uid: 10000000,
+    faiths: ['真理'],
+    profession_id: '',
+    gold: 100,
+    ascension_score: 0,
+    audience_score: 0,
+    audience_rank: 0,
+    abandon_count: 0,
+    status: 'active',
+  }
+  const database = {
+    get: async (table) => table === 'faith_core_users_data' ? [{ ...row, faiths: [...row.faiths] }] : [],
+    set: async (table, query, patch) => {
+      if (table !== 'faith_core_users_data' || query.uid !== row.uid || query.gold !== row.gold) return { matched: 0 }
+      row = { ...row, ...patch }
+      return { matched: 1 }
+    },
+    create: async (_table, value) => value,
+  }
+  const bonuses = {
+    calculateForUser: async (_user, request) => ({
+      ...request,
+      multiplier: 2,
+      fixedBonus: 0,
+      finalValue: request.baseValue * 2,
+      contributions: [],
+      failures: [],
+    }),
+  }
+  const service = new core.FaithBusinessTransactionService(
+    { run: async (task) => task(database) },
+    new core.KeyedLockService(),
+    { emit: async () => {} },
+    { require: async () => ({ ...row, faiths: [...row.faiths] }) },
+    {},
+    { require: () => ({}) },
+    { begin: async () => 'tx', entry: async () => {} },
+    { require: () => ({}) },
+    {},
+    bonuses,
+  )
+
+  const result = await service.run('daily_fish', row.uid, async (tx) =>
+    tx.economy.reward({ gold: 25 }, { source: 'daily_fish.play' }))
+
+  assert.equal(result.requested.gold, 25)
+  assert.equal(result.applied.gold, 50)
+  assert.equal(result.before.gold, 100)
+  assert.equal(result.after.gold, 150)
+  assert.equal(row.gold, 150)
 })
 
 test('core config normalization validates and freezes reload snapshots', () => {
