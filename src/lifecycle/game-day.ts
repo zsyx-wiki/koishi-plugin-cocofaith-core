@@ -8,7 +8,6 @@ import type { FaithHooksService } from "../hooks";
 const LAST_GAME_DAY_KEY = "last_game_day";
 const GAME_DAY_LOCK_KEY = "game_day_lock";
 
-/** 只负责可靠地产生游戏日事件；签到、商店等具体重置逻辑仍由 Business 注册。 */
 export class FaithGameDayService {
   private timer?: () => void;
   private formatter: Intl.DateTimeFormat;

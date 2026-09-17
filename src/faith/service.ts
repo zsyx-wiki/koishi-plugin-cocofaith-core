@@ -60,8 +60,7 @@ export class FaithRegistryService extends FaithRegistryServiceBase {
   private async createDynamic(input: { name: string; path: string; creatorUid: number; prayerWord?: string; metadata?: Record<string, unknown> }) {
     if (this.has(input.name)) throw new Error(`信仰已存在：${input.name}`);
     await this.users.require(input.creatorUid);
-    // 创建信仰并不隐式修改创建者的当前信仰；信徒数应由 setFaiths/abandonFaith
-    // 在同一用户事务中维护。旧实现从 1 开始会在创建者随后加入时重复计数。
+    // 信徒数由用户信仰事务维护，不能在创建时预增。
     const definition = this.register({ name: input.name, path: input.path, type: "dynamic", creator_uid: input.creatorUid, believer_count: 0, prayer_word: input.prayerWord?.trim() || undefined, custom_professions: {}, metadata: input.metadata ?? {} });
     try {
       await this.ctx.database.create("faith_core_faiths", {

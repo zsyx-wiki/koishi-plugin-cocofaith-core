@@ -8,7 +8,6 @@ import type { FaithCurrency, FaithEconomyChangeResult, FaithEconomyOptions, Fait
 
 const CURRENCIES = ["gold", "ascension_score"] as const;
 
-/** Faith 真实玩法使用的双货币服务，不提供动态币种注册。 */
 export class FaithEconomyService {
   constructor(
     private users: FaithUsersService,
@@ -31,13 +30,11 @@ export class FaithEconomyService {
     return current;
   }
 
-  /** 门票、购买、押注及组合费用；不应用加成，余额检查与扣除同事务完成。 */
   async pay(uid: number, cost: Readonly<FaithMoney>, options: FaithEconomyOptions): Promise<FaithEconomyChangeResult> {
     const requested = normalizePositiveMoney(cost, "费用");
     return this.changeFixed(uid, requested, negate(requested), options, true);
   }
 
-  /** 玩法产出；默认应用 v2 正向奖励加成。 */
   async reward(uid: number, amount: Readonly<FaithMoney>, options: FaithRewardOptions): Promise<FaithEconomyChangeResult> {
     const requested = normalizePositiveMoney(amount, "奖励");
     const preview = options.applyBonuses === false
@@ -46,13 +43,11 @@ export class FaithEconomyService {
     return this.changeFixed(uid, requested, preview.applied, options, false);
   }
 
-  /** 退票、取消下注、奖池本金返还；固定原值，不应用奖励加成。 */
   refund(uid: number, amount: Readonly<FaithMoney>, options: FaithEconomyOptions) {
     const requested = normalizePositiveMoney(amount, "退款");
     return this.changeFixed(uid, requested, requested, options, false);
   }
 
-  /** 玩家间直接转移，不产生加成，也不会增发货币。 */
   async transfer(fromUid: number, toUid: number, amount: Readonly<FaithMoney>, options: FaithEconomyOptions): Promise<FaithTransferResult> {
     if (fromUid === toUid) throw new FaithCoreError("VALIDATION_FAILED", "付款方与收款方不能相同");
     const normalized = normalizePositiveMoney(amount, "转账金额"), audit = auditOptions(options);

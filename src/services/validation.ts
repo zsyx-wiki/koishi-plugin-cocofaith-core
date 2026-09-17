@@ -1,6 +1,5 @@
 import { UID_MAX, UID_MIN } from "../types";
 
-/** 防止单个用户/业务记录异常膨胀；这是安全上限，不是正常业务目标大小。 */
 export const MAX_BUSINESS_RECORD_BYTES = 256 * 1024;
 
 export function assertUid(uid: number) {

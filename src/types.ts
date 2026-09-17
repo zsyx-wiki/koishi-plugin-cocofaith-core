@@ -173,7 +173,6 @@ export interface InventoryItem {
   item: Readonly<FaithItemDefinition>;
 }
 
-/** 不加载物品定义的轻量背包条目，适合判定持有物和数量。 */
 export interface InventoryStack {
   item_id: string;
   quantity: number;
@@ -209,7 +208,6 @@ export interface FaithDefinition {
   name: string;
   path: string;
   type: "fixed" | "dynamic";
-  /** 祷告成功时展示的神名；动态信仰默认使用信仰名。 */
   deity_name?: string;
   creator_uid?: number;
   believer_count: number;

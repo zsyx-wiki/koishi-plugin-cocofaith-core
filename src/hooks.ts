@@ -22,7 +22,6 @@ export interface FaithHookFailure { handlerId: string; owner: string; error: unk
 export interface FaithHookReport<R = unknown> { event: string; invoked: number; results: R[]; failures: FaithHookFailure[]; }
 interface HookEntry { id: string; owner: string; priority: number; order: number; once: boolean; timeout: number; handler: FaithHookHandler; }
 
-/** 支持广播、bail、waterfall 的安全 Hook 总线。单处理器失败不会中断其他处理器。 */
 export class FaithHooksService {
   private handlers = new Map<string, Map<string, HookEntry>>();
   private orderedHandlers = new Map<string, readonly HookEntry[]>();

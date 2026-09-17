@@ -15,7 +15,9 @@
 
 ---
 
-CoCoFaith Core 是 CoCoFaith v3 的基础插件，负责保存公共数据并向玩法层提供稳定服务。它不注册签到、抽卡、商店或游戏命令，具体玩法由 CoCoFaith Business 实现。
+CoCoFaith Core 是 CoCoFaith v3 的基础插件，负责保存公共数据并向玩法层提供稳定服务。
+
+它不注册签到、抽卡、商店或游戏命令，具体玩法由 CoCoFaith Business 实现。
 
 插件需要 Koishi 数据库服务。加载 CoCoFaith Business 和平台 Adapter 时，应将 Core 放在它们之前。
 
@@ -29,9 +31,15 @@ CoCoFaith Core 是 CoCoFaith v3 的基础插件，负责保存公共数据并向
 - 提供事务、权限、生命周期和 Hook
 - 为 Business 提供受限接口，避免玩法直接操作其他业务的数据
 
-Core 创建的数据库表统一使用 `faith_core_` 前缀。删除某个平台身份不会同时删除玩家资产，已经分配的 UID 也不会重新使用。
+Core 创建的数据库表统一使用 `faith_core_` 前缀。
 
-Core 同时提供轻量的 Gameplay SDK。普通玩法可以通过 `defineGameplay()` 声明命令、配置和原子执行方式，不需要自行处理 UID 校验、锁、幂等键、业务状态保存或消息结果包装。复杂玩法仍可使用原有 Business Module 和完整 Business Scope。
+删除某个平台身份不会同时删除玩家资产，已经分配的 UID 也不会重新使用。
+
+Core 同时提供轻量的 Gameplay SDK。
+
+普通玩法可以通过 `defineGameplay()` 声明命令、配置和原子执行方式，不需要自行处理 UID 校验、锁、幂等键、业务状态保存或消息结果包装。
+
+复杂玩法仍可使用原有 Business Module 和完整 Business Scope。
 
 ## 安装
 
@@ -130,9 +138,15 @@ npm run build
 - `src/data/openable-items.ts`
 - `src/data/easterEggs.ts`
 
-这些文件直接使用 `FaithItemDefinition` 做 TypeScript 类型检查，新增条目时缺少字段、字段类型错误或使用未注册的稀有度都会在构建或启动阶段报错。标准稀有度顺序为 `D < C < B < A < S < SS < SSS < 彩蛋 < UR < URE < SP < EX`。`URE` 用于限定彩蛋；旧版 LT 物品在 v3 中统一按 UR 注册，LT 不再受支持。
+这些文件直接使用 `FaithItemDefinition` 做 TypeScript 类型检查，新增条目时缺少字段、字段类型错误或使用未注册的稀有度都会在构建或启动阶段报错。
 
-`item_id` 是持久化标识，发布后不要随名称一起修改。其他玩法注册物品时应使用自身的 Business Scope，不需要改动 Core 内置数据。
+标准稀有度顺序为 `D < C < B < A < S < SS < SSS < 彩蛋 < UR < URE < SP < EX`。
+
+`URE` 用于限定彩蛋,旧版 LT 物品在 v3 中统一按 UR 注册，LT 不再受支持。
+
+`item_id` 是持久化标识，发布后不要随名称一起修改。
+
+其他玩法注册物品时应使用自身的 Business Scope，不需要改动 Core 内置数据。
 
 数据结构和公开接口仍可能在正式版前调整，生产环境升级前请先备份数据库。
 

@@ -74,7 +74,6 @@ export interface FaithBusinessProfessionsApi {
 export interface FaithBusinessIdentitiesApi {
   resolve(input: IdentityInput): Promise<number | null>;
   list(uid: number): ReturnType<FaithIdentityService["list"]>;
-  /** 只给已经存在的 UID 增加身份，不创建用户，也不合并两个 UID。 */
   bindExisting(uid: number, input: IdentityInput): Promise<boolean>;
 }
 export interface FaithBusinessStatusIdentitiesApi {

@@ -11,7 +11,6 @@ export interface FaithWallet {
 }
 
 export interface FaithEconomyOptions {
-  /** 使用 business.action 格式，例如 shop.buy。 */
   source: string;
   idempotencyKey?: string;
   operatorUid?: number;
@@ -19,7 +18,6 @@ export interface FaithEconomyOptions {
 }
 
 export interface FaithRewardOptions extends FaithEconomyOptions {
-  /** 默认 true。退款、奖池返还等固定值应使用 refund()。 */
   applyBonuses?: boolean;
 }
 

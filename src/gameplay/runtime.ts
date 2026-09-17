@@ -21,7 +21,6 @@ export interface GameplayExecutionInput<C extends Record<string, unknown>, S> {
   readonly service: S;
 }
 
-/** 执行一个简化玩法命令；Business 只负责把路由结果传入这里。 */
 export async function executeGameplayCommand<C extends Record<string, unknown>, S>(
   input: GameplayExecutionInput<C, S>,
 ): Promise<GameplayResult> {

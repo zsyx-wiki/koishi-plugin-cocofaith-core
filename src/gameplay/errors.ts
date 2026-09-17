@@ -20,7 +20,6 @@ export class GameplayError extends Error {
   }
 }
 
-/** 抛出一个可安全展示给玩家的玩法错误。 */
 export function fail(
   code: GameplayErrorCode,
   message?: string,

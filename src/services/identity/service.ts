@@ -81,7 +81,6 @@ export class FaithIdentityService {
     return this.ctx.database.get("faith_core_users", { uid }, { sort: { id: "asc" } });
   }
 
-  /** 只删除指定身份映射；用户数据、背包及业务数据不参与该事务。 */
   async unbind(uid: number, input: IdentityInput) {
     const identity = normalizeIdentity(input);
     const removed = await this.locks.run(identityLockKey(identity), () => this.transactions.run(async (database) => {

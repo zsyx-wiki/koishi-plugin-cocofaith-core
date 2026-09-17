@@ -59,10 +59,6 @@ export interface FaithAdapterIdentityApi {
   bind(uid: number, identity: IdentityInput): Promise<boolean>;
 }
 
-/**
- * CoCoFaith Core 的稳定公共门面。具体实现按职责拆入各 service，门面只负责编排、
- * 生命周期和少量向后兼容委托。
- */
 export class FaithCoreService extends Service {
   readonly apiVersion = "3.0";
   private readonly capabilitySet = new Set([
@@ -158,7 +154,6 @@ export class FaithCoreService extends Service {
     this.registerCoreLifecycle();
   }
 
-  /** 原子更新运行时配置；失败时恢复注册默认值、游戏日调度器及公开配置快照。 */
   async reloadConfig(input: FaithCoreConfig) {
     const next = normalizeCoreConfig(input);
     return this.locks.run("core:config-reload", async () => {
@@ -214,7 +209,6 @@ export class FaithCoreService extends Service {
     });
   }
 
-  /** 管理接口不向 Adapter 门面暴露；解绑只移除映射，不级联删除用户资产。 */
   listIdentities(uid: number) { return this.identities.list(uid); }
   unbindIdentity(uid: number, identity: IdentityInput) { return this.identities.unbind(uid, identity); }
   private registerBusinessTable(name: string, fields: BusinessModelFields, config = {}, businessInitializing = false) {

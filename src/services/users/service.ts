@@ -120,7 +120,6 @@ export class FaithUsersService {
     return this.setFaiths(uid, [next, ...user.faiths.slice(1).filter((item) => item !== next)]);
   }
 
-  /** Core 只提交弃誓状态：更换当前信仰并将次数加一，不计算玩法费用。 */
   async abandonFaith(uid: number, faith: string) {
     const next = normalizeFaith(faith);
     const result = await this.locks.run(`uid:${uid}`, () => this.transactions.run(async (database) => {

@@ -139,6 +139,12 @@ test('faith prayer words resolve in constant time and stay unique across updates
   registry.register({ ...registry.require('椰神'), prayer_word: '椰落，风止' }, { override: true })
   assert.equal(registry.resolvePrayerWord('椰风，神临'), undefined)
   assert.equal(registry.resolvePrayerWord('椰落，风止').name, '椰神')
+  assert.deepEqual(registry.byPath('生命').filter((faith) => faith.type === 'dynamic').map((faith) => faith.name), ['椰神'])
+  registry.register({ ...registry.require('椰神'), path: '存在' }, { override: true })
+  assert.deepEqual(registry.byPath('生命').filter((faith) => faith.type === 'dynamic'), [])
+  assert.deepEqual(registry.byPath('存在').filter((faith) => faith.type === 'dynamic').map((faith) => faith.name), ['椰神'])
+  registry.unregister('椰神')
+  assert.deepEqual(registry.byPath('存在').filter((faith) => faith.type === 'dynamic'), [])
 })
 
 test('business records reject prototype pollution and circular data', () => {

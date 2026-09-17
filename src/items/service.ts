@@ -79,7 +79,6 @@ export class FaithItemsService extends FaithItemRegistry {
     return removed;
   }
 
-  /** 返回背包条目及完整物品定义，适合渲染详情。 */
   async getInventoryEntries(uid: number): Promise<InventoryItem[]> {
     const [, rows] = await Promise.all([this.users.require(uid), this.repository.rows(this.ctx.database, uid)]);
     return rows.map((row) => {
@@ -93,7 +92,6 @@ export class FaithItemsService extends FaithItemRegistry {
   /** 兼容旧名；新代码应使用 getInventoryEntries() 明确其包含定义。 */
   getInventory(uid: number) { return this.getInventoryEntries(uid); }
 
-  /** 只读取 item_id 和 quantity，不实例化/附加物品定义。 */
   async getInventoryStacks(uid: number): Promise<InventoryStack[]> {
     const [, rows] = await Promise.all([this.users.require(uid), this.repository.stacks(this.ctx.database, uid)]);
     return rows.map((row) => {

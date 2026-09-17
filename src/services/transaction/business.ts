@@ -60,7 +60,6 @@ export interface FaithAtomicEconomyApi {
   getWallet(): Promise<FaithWallet>;
   canAfford(cost: Readonly<FaithMoney>): Promise<boolean>;
   pay(cost: Readonly<FaithMoney>): Promise<FaithCoreUserData>;
-  /** 在当前事务内计算加成并发放玩法奖励。 */
   reward(
     amount: Readonly<FaithMoney>,
     options?: FaithAtomicRewardOptions,
@@ -75,7 +74,6 @@ export interface FaithAtomicRewardOptions {
   metadata?: Readonly<Record<string, unknown>>;
 }
 
-/** 仅向 Business 暴露白名单操作，绝不泄露 Koishi Database/Transaction。 */
 export class FaithBusinessTransactionService {
   private inventory = new FaithInventoryRepository();
 
