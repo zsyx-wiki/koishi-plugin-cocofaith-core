@@ -19,6 +19,7 @@ export class FaithBusinessCoreScope {
   #tableName?: string;
   #tablePrimary = new Set<string>();
   readonly lifecycle: FaithLifecycleScope;
+  readonly runtime: Readonly<{ apiVersion: string; version?: string; capabilities: readonly string[] }>;
   readonly users: Readonly<FaithBusinessUsersApi>;
   readonly items: Readonly<FaithBusinessItemsApi>;
   readonly permissions: Readonly<FaithBusinessPermissionsApi>;
@@ -61,9 +62,11 @@ export class FaithBusinessCoreScope {
       config?: Partial<Model.Config>,
     ) => string,
     database?: Context["database"],
+    runtime: { apiVersion: string; version?: string; capabilities: readonly string[] } = { apiVersion: "3.0", capabilities: [] },
   ) {
     assertBusinessName(name);
     this.lifecycle = lifecycle.scope(`business:${name}`);
+    this.runtime = Object.freeze({ ...runtime, capabilities: Object.freeze([...runtime.capabilities]) });
     this.users = apis.users;
     this.items = createBusinessItemsApi(apis.items, name);
     this.permissions = createBusinessPermissionsApi(apis.permissions, name);

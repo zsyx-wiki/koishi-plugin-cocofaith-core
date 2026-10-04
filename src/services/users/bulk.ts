@@ -6,24 +6,8 @@ import type { FaithUsersService } from "./service";
 import type { Context } from "koishi";
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
-
-export interface FaithBulkOptions {
-  /** 调用方生成的稳定操作号；同一操作号重试不会重复发放。 */
-  operationId: string;
-  status?: FaithCoreUserData["status"] | "all";
-  pageSize?: number;
-  concurrency?: number;
-  continueOnError?: boolean;
-}
-
-export interface FaithBulkFailure { uid: number; code: string; message: string; }
-export interface FaithBulkResult {
-  operationId: string;
-  total: number;
-  succeeded: number;
-  skipped: number;
-  failed: readonly FaithBulkFailure[];
-}
+import type { FaithBulkFailure, FaithBulkOptions, FaithBulkResult } from "@mueo/cocofaith-sdk/core";
+export type { FaithBulkFailure, FaithBulkOptions, FaithBulkResult } from "@mueo/cocofaith-sdk/core";
 
 /**
  * 跨全体用户操作不是单一大事务：每个 UID 独立原子提交，并以 operationId 幂等。

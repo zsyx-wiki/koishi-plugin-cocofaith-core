@@ -1,4 +1,5 @@
 import { Context, Service } from "koishi";
+import type { FaithCoreServiceContract } from "@mueo/cocofaith-sdk/core";
 import { CORE_EASTER_EGGS } from "./data/easterEggs";
 import { CORE_ITEMS } from "./data/items";
 import { CORE_OPENABLE_ITEMS } from "./data/openable-items";
@@ -33,6 +34,7 @@ import {
   FaithBulkOperationsService,
 } from "./services";
 import type { FaithCoreConfig, FaithItemDefinition, IdentityInput } from "./types";
+import { COCOFAITH_CORE_VERSION } from "./version";
 
 export const CORE_SERVICE_ORDER = [
   "lifecycle",
@@ -59,7 +61,7 @@ export interface FaithAdapterIdentityApi {
   bind(uid: number, identity: IdentityInput): Promise<boolean>;
 }
 
-export class FaithCoreService extends Service {
+export class FaithCoreService extends Service implements FaithCoreServiceContract {
   readonly apiVersion = "3.0";
   private readonly capabilitySet = new Set([
     "transactions.idempotency", "transactions.multi-uid", "transactions.ledger", "transactions.callbacks",
@@ -243,6 +245,7 @@ export class FaithCoreService extends Service {
         return this.registerBusinessTable(business, fields, config, initializing);
       },
       this.ctx.database,
+      { apiVersion: this.apiVersion, version: COCOFAITH_CORE_VERSION, capabilities: this.capabilities.all() },
     );
   }
 }

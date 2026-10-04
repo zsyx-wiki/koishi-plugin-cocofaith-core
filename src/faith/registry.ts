@@ -38,6 +38,7 @@ export class FaithRegistryServiceBase {
   require(name: string) { const item = this.get(name); if (!item) throw new Error(`信仰不存在：${name}`); return item; }
   has(name: string) { return !!this.get(name); }
   all() { return [...this.registry.values()]; }
+  paths() { return Object.freeze([...this.pathMembers.keys()]); }
   byPath(path: string) {
     const result: Readonly<FaithDefinition>[] = [];
     for (const name of this.pathMembers.get(path.trim()) ?? []) {

@@ -51,4 +51,4 @@ export * from "./integrity";
 export * from "./health";
 export * from "./status-identities";
 export * from "./version";
-export * from "./gameplay";
+export * from "@mueo/cocofaith-sdk/gameplay";

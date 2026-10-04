@@ -1,6 +1,6 @@
 {
   "name": "@mueo/koishi-plugin-cocofaith-core",
-  "version": "3.0.0-alpha.2",
+  "version": "3.0.0-alpha.3",
   "description": "CoCoFaith v3 核心数据与能力服务",
   "author": "Mueo <mueo@mueoo.com>",
   "main": "lib/index.js",
@@ -17,6 +17,9 @@
   },
   "peerDependencies": {
     "koishi": "^4.16.0"
+  },
+  "dependencies": {
+    "@mueo/cocofaith-sdk": "^3.0.0-alpha.3"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
