@@ -7,147 +7,56 @@
 
   <p>
     <img alt="Koishi" src="https://img.shields.io/badge/Koishi-4.16%2B-60a5fa?style=flat-square">
-    <img alt="Version" src="https://img.shields.io/badge/version-3.0.0--alpha.3-a78bfa?style=flat-square">
-    <img alt="License" src="https://img.shields.io/badge/license-GPL--3.0-52b788?style=flat-square">
+    <img alt="Version" src="https://img.shields.io/badge/version-3.0.0--alpha.4-a78bfa?style=flat-square">
+    <img alt="License" src="https://img.shields.io/badge/License-GPL--3.0-52b788?style=flat-square">
     <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178c6?style=flat-square&logo=typescript&logoColor=white">
   </p>
 </div>
 
 ---
 
-CoCoFaith Core 是 CoCoFaith v3 的基础插件，负责保存公共数据并向玩法层提供稳定服务。
-
-它不注册签到、抽卡、商店或游戏命令，具体玩法由 CoCoFaith Business 实现。
-
-插件需要 Koishi 数据库服务。加载 CoCoFaith Business 和平台 Adapter 时，应将 Core 放在它们之前。
-
-## 基础能力
-
-- 使用独立 UID 处理玩家数据，可将不同平台身份绑定到同一名玩家
-- 允许玩法注册身份状态、等级和参数，并按激活状态控制身份加成
-- 保存玩家数值、信仰、职业、背包等公共数据
-- 提供金币、登神分等通用经济操作
-- 管理物品、信仰、职业和加成定义
-- 提供事务、权限、生命周期和 Hook
-- 为 Business 提供受限接口，避免玩法直接操作其他业务的数据
-
-Core 创建的数据库表统一使用 `faith_core_` 前缀。
-
-删除某个平台身份不会同时删除玩家资产，已经分配的 UID 也不会重新使用。
-
-Core 同时提供轻量的 Gameplay SDK。
-
-普通玩法可以通过 `defineGameplay()` 声明命令、配置和原子执行方式，不需要自行处理 UID 校验、锁、幂等键、业务状态保存或消息结果包装。
-
-复杂玩法仍可使用原有 Business Module 和完整 Business Scope。
+CoCoFaith v3 的数据服务，管理 UID、平台身份、信仰、职业、背包、经济和事务。
+玩家命令由 [CoCoFaith Business](https://github.com/zsyx-wiki/koishi-plugin-cocofaith-business) 提供。
 
 ## 安装
 
-```bash
-npm install @mueo/koishi-plugin-cocofaith-core
+在 Koishi 项目目录执行：
+
+```sh
+npm install @mueo/koishi-plugin-cocofaith-core@alpha
 ```
 
-在 Koishi 中启用数据库插件后加载 CoCoFaith Core。
-
-仅使用 Core 不会产生面向玩家的命令。
+先启用数据库插件，再在 Koishi 中添加 `@mueo/cocofaith-core`。
+完整玩法还需要 Business 和对应平台的 CoCoFaith Adapter。
 
 ## 配置
 
-默认以 `Asia/Shanghai` 时区的每日 `07:30` 作为游戏日分界。
+| 配置 | 默认值 |
+| --- | --- |
+| `registration.initialGold` | `300` |
+| `gameDay.enabled` | `true` |
+| `gameDay.timezone` | `Asia/Shanghai` |
+| `gameDay.rolloverHour` | `7` |
+| `gameDay.rolloverMinute` | `30` |
+| `gameDay.checkIntervalSeconds` | `60` |
+| `gameDay.lockTimeoutSeconds` | `1800` |
 
-| 配置 | 默认值 | 说明 |
-| --- | ---: | --- |
-| `registration.initialGold` | `300` | 新用户初始金币 |
-| `gameDay.enabled` | `true` | 是否运行游戏日调度 |
-| `gameDay.timezone` | `Asia/Shanghai` | 游戏日时区 |
-| `gameDay.rolloverHour` | `7` | 切换小时 |
-| `gameDay.rolloverMinute` | `30` | 切换分钟 |
-| `gameDay.checkIntervalSeconds` | `60` | 检查间隔 |
-| `gameDay.lockTimeoutSeconds` | `1800` | 跨实例锁超时 |
-
-配置可以在运行时重新加载。涉及游戏日时间的修改会在 reload 后应用，不需要重启整个 Koishi 实例。
+默认每天 07:30 切换游戏日，时间配置支持重载。
 
 ## 开发
 
-插件通过 `faithCore` 服务提供能力
-
-普通玩法应依赖 CoCoFaith Business，并通过 Business Scope 使用 Core
-
-平台 Adapter 只使用身份解析与绑定接口。
-
-```ts
-const uid = await ctx.faithCore.adapter.resolve(identity)
-const user = await ctx.faithCore.users.require(uid)
-const inventory = await ctx.faithCore.items.getInventory(uid)
-
-await ctx.faithCore.economy.reward(uid, { gold: 100 }, {
-  source: 'signin.reward',
-})
-```
-
-在 Business 原子事务中可以直接发放带加成的奖励：
+插件提供 `faithCore` 服务。玩法通过 Business Scope 调用，Core 契约从
+`@mueo/cocofaith-sdk/core` 导入。
 
 ```ts
 await core.transaction.run(uid, async (tx) => {
-  const reward = await tx.economy.reward(
-    { gold: 100 },
-    { source: "example.reward" },
-  )
-  await tx.data.set({ private: { claimed: true } })
-  return reward
-}, { source: "example.claim" })
+  await tx.economy.pay({ gold: 100 })
+  await tx.items.give('reward_item', 1)
+}, { source: 'shop.purchase', idempotencyKey: `shop:${eventId}` })
 ```
 
-需要同时修改数值、背包或业务数据时，应使用 Business Scope 提供的原子事务，不要拆成多次独立写入。
+内置数据位于 `src/data/`。其他玩法通过自身的 Business Scope 注册物品，
+`item_id` 用于持久化识别，修改显示名称时保留原 ID。
 
-示例：
-
-```ts
-await core.transaction.run(uid, async (tx) => {
-  const cost = { gold: 100 }
-  if (!await tx.economy.canAfford(cost)) {
-    throw new Error('金币不足')
-  }
-
-  const data = await tx.data.get()
-  const purchaseCount = Number(data.private.purchaseCount ?? 0)
-
-  await tx.economy.pay(cost)
-  await tx.items.give(rewardItemId, 1)
-  await tx.data.set({
-    private: {
-      ...data.private,
-      purchaseCount: purchaseCount + 1,
-    },
-  })
-}, {
-  source: 'shop.purchase',
-  idempotencyKey: `shop:${eventId}`,
-})
-```
-
-```bash
-npm run build
-```
-
-### 内置数据
-
-内置物品、可开启物品和彩蛋分别维护在：
-
-- `src/data/items.ts`
-- `src/data/openable-items.ts`
-- `src/data/easterEggs.ts`
-
-这些文件直接使用 `FaithItemDefinition` 做 TypeScript 类型检查，新增条目时缺少字段、字段类型错误或使用未注册的稀有度都会在构建或启动阶段报错。
-
-标准稀有度顺序为 `D < C < B < A < S < SS < SSS < 彩蛋 < UR < URE < SP < EX`。
-
-`URE` 用于限定彩蛋,旧版 LT 物品在 v3 中统一按 UR 注册，LT 不再受支持。
-
-`item_id` 是持久化标识，发布后不要随名称一起修改。
-
-其他玩法注册物品时应使用自身的 Business Scope，不需要改动 Core 内置数据。
-
-数据结构和公开接口仍可能在正式版前调整，生产环境升级前请先备份数据库。
-
-版本记录见 [CHANGELOG.md](./CHANGELOG.md)。项目采用 GPL-3.0-or-later 许可证。
+当前为开发版，接口与数据结构可能调整。
+版本记录见 [CHANGELOG.md](./CHANGELOG.md)。许可证：GPL-3.0-or-later。
