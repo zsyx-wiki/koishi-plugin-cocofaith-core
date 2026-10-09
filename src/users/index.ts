@@ -1,2 +1,2 @@
+export * from "./bulk";
 export * from "./service";
-export * from "./types";

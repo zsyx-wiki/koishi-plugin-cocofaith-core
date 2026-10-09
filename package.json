@@ -1,7 +1,7 @@
 {
   "name": "@mueo/koishi-plugin-cocofaith-core",
   "version": "3.0.0-alpha.3",
-  "description": "CoCoFaith v3 核心数据与能力服务",
+  "description": "CoCoFaith v3 \u6838\u5fc3\u6570\u636e\u4e0e\u80fd\u529b\u670d\u52a1",
   "author": "Mueo <mueo@mueoo.com>",
   "repository": {
     "type": "git",
@@ -21,7 +21,9 @@
   "scripts": {
     "build": "tsup",
     "watch": "tsup -w",
-    "test": "npm run build && node --test tests/*.test.cjs"
+    "test": "npm run typecheck && npm run build && node --test tests/*.test.cjs",
+    "format": "node scripts/format-source.cjs src config.ts messages.ts",
+    "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
     "koishi": "^4.16.0"
@@ -41,7 +43,7 @@
   "koishi": {
     "name": "CoCoFaith Core",
     "description": {
-      "zh-CN": "CoCoFaith v3 的 UID、身份、数值、经济、物品、事务、Hook 与公共 API。"
+      "zh-CN": "CoCoFaith v3 \u7684 UID\u3001\u8eab\u4efd\u3001\u6570\u503c\u3001\u7ecf\u6d4e\u3001\u7269\u54c1\u3001\u4e8b\u52a1\u3001Hook \u4e0e\u516c\u5171 API\u3002"
     },
     "services": {
       "required": [

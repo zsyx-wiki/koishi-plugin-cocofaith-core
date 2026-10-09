@@ -390,3 +390,18 @@ function assertCode(callback) {
   try { callback() } catch (error) { return error.code }
   assert.fail('expected callback to throw')
 }
+
+test('lifecycle scopes release live resources in reverse order despite a cleanup failure', async () => {
+  const { FaithLifecycleScope, CallbackDisposable } = require('../lib/index.js')
+  const scope = new FaithLifecycleScope('cleanup-probe', {})
+  const order = []
+  const disposed = new CallbackDisposable(() => order.push('already'))
+  await disposed.dispose()
+  scope.track(disposed)
+  scope.track(new CallbackDisposable(() => order.push('first')))
+  scope.track(new CallbackDisposable(() => { order.push('second'); throw new Error('cleanup failed') }))
+  await assert.rejects(scope.dispose(), /卸载生命周期作用域失败/)
+  assert.deepEqual(order, ['already', 'second', 'first'])
+  await scope.dispose()
+  assert.equal(order.length, 3)
+})

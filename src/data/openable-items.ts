@@ -1,4 +1,4 @@
-import type { FaithItemDefinition, FaithOpenableDefinition } from "../types";
+import type { FaithItemDefinition,FaithOpenableDefinition } from "../types";
 
 const genericRules: Record<string, FaithOpenableDefinition> = {
   D: random([20, 40], [["D", 60], ["C", 35], ["B", 5]]),
